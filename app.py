@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import datetime
 import pandas as pd
 import requests
-import os
+import time
 
 # Configuración de la página web
 st.set_page_config(page_title="Control de Muelles - Almacén", page_icon="🚛", layout="centered")
@@ -13,13 +13,23 @@ st.write("Conectado a Google Sheets mediante Google Apps Script.")
 # --- CONFIGURACIÓN DE URL DE APPS SCRIPT ---
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw6ASYyy6hW6gdjqjVSnrgvneo0-3wh2UhM4Hi5yi9bWk2_O3iRqTYX2EF3Pph5ymq3Cw/exec"
 
-EXCEL_FILE = "registro_muelles.xlsx"
-
 # Lista de carretilleros disponibles
 LISTA_CARRETILLEROS = [
     "C. Alías", "C. Díaz", "M. José", "David", "Andreu", 
     "Raúl", "Álvaro", "Daniel", "J. A. Lara", "J. A. Vega", "Sergio", "Samuel"
 ]
+
+# Columnas oficiales del registro
+COLS_NECESARIAS = [
+    "Fecha Registro", "Matrícula", "Albarán", "Operación",
+    "Hora Llegada", "Hora Inicio", "Hora Fin", 
+    "Min. Espera", "Min. Operación", "Min. Totales",
+    "Pallets", "Carretillero", "Turno", "Incidencias"
+]
+
+# Inicializar historial en memoria de la sesión (sin archivos Excel locales)
+if "df_registros" not in st.session_state:
+    st.session_state.df_registros = pd.DataFrame(columns=COLS_NECESARIAS)
 
 # Función para calcular el turno según la hora y minuto
 def calcular_turno(hora, minuto):
@@ -30,25 +40,6 @@ def calcular_turno(hora, minuto):
         return "Tarde"
     else:
         return "Noche"
-
-# Función para cargar datos locales de respaldo y historial
-def cargar_datos():
-    cols_necesarias = [
-        "Fecha Registro", "Matrícula", "Albarán", "Operación",
-        "Hora Llegada", "Hora Inicio", "Hora Fin", 
-        "Min. Espera", "Min. Operación", "Min. Totales",
-        "Pallets", "Carretillero", "Turno", "Incidencias"
-    ]
-    if os.path.exists(EXCEL_FILE):
-        df = pd.read_excel(EXCEL_FILE)
-        for col in cols_necesarias:
-            if col not in df.columns:
-                df[col] = ""
-        return df
-    else:
-        return pd.DataFrame(columns=cols_necesarias)
-
-df_registros = cargar_datos()
 
 # Listas para los desplegables de hora y minutos
 lista_horas = list(range(0, 24))
@@ -63,8 +54,8 @@ with col_f1:
     carretillero = st.selectbox("Carretillero", LISTA_CARRETILLEROS)
 
 matriculas_guardadas = []
-if not df_registros.empty and "Matrícula" in df_registros.columns:
-    matriculas_guardadas = sorted(df_registros["Matrícula"].dropna().unique().tolist())
+if not st.session_state.df_registros.empty and "Matrícula" in st.session_state.df_registros.columns:
+    matriculas_guardadas = sorted(st.session_state.df_registros["Matrícula"].dropna().unique().tolist())
 
 with col_f2:
     tipo_ingreso_mat = st.radio("Matrícula:", ["Seleccionar existente", "Escribir nueva"], horizontal=True, label_visibility="collapsed")
@@ -153,7 +144,7 @@ if activar_carga:
     with ci_h:
         c_inicio_h = st.selectbox("Hora Inicio (Carga)", lista_horas, index=c_llegada_h, key="ci_h")
     with ci_im:
-        c_inicio_m = st.selectbox("Minutos Inicio (Carga)", lista_minutos, index=0, key="cl_m" if not activar_descarga else lista_minutos[0])
+        c_inicio_m = st.selectbox("Minutos Inicio (Carga)", lista_minutos, index=0, key="ci_m")
         
     cf_h, cf_fm = st.columns(2)
     with cf_h:
@@ -250,39 +241,27 @@ if submitted:
                         incidencias if incidencias else "Ninguna"
                     ])
 
-                # 1. Guardar localmente en Excel de respaldo
-                columnas_completas = [
-                    "Fecha Registro", "Matrícula", "Albarán", "Operación",
-                    "Hora Llegada", "Hora Inicio", "Hora Fin", 
-                    "Min. Espera", "Min. Operación", "Min. Totales",
-                    "Pallets", "Carretillero", "Turno", "Incidencias"
-                ]
-                df_nuevo = pd.DataFrame(nuevos_datos, columns=columnas_completas)
-                df_registros = pd.concat([df_registros, df_nuevo], ignore_index=True)
-                df_registros.to_excel(EXCEL_FILE, index=False)
-                
-                # 2. Enviar a Google Sheets vía Web App (solo las filas nuevas)
+                # 1. Enviar a Google Sheets vía Web App (Fuente de verdad oficial)
                 response = requests.post(WEB_APP_URL, json={"action": "update", "rows": nuevos_datos})
                 
-                # NOTIFICACIÓN VISUAL GARANTIZADA
-                st.success(f"✅ ¡Guardado con éxito para la matrícula **{matricula.upper()}**!")
-                
                 if response.status_code == 200:
-                    st.success(f"☁️ Sincronizado correctamente en Google Sheets (Carretillero: {carretillero} | Turno: {turno_calc})")
+                    # 2. Actualizar la tabla visual en memoria de la sesión
+                    df_nuevo = pd.DataFrame(nuevos_datos, columns=COLS_NECESARIAS)
+                    st.session_state.df_registros = pd.concat([st.session_state.df_registros, df_nuevo], ignore_index=True)
+                    
+                    st.success(f"✅ ¡Guardado y sincronizado en Google Sheets para **{matricula.upper()}**! (Carretillero: {carretillero} | Turno: {turno_calc})")
                     st.balloons()
+                    time.sleep(2)
+                    st.rerun()
                 else:
-                    st.warning(f"⚠️ Guardado local correcto, pero aviso en la nube: {response.text}")
-                
-                import time
-                time.sleep(2)
-                st.rerun()
+                    st.error(f"❌ Error al conectar con Google Sheets (Código {response.status_code}): {response.text}")
                 
             except Exception as e:
                 st.error(f"❌ Error al procesar el guardado: {e}")
 
 st.divider()
-st.subheader("📊 Historial de Registros")
-if not df_registros.empty:
-    st.dataframe(df_registros, use_container_width=True)
+st.subheader("📊 Historial de Registros (Sesión actual)")
+if not st.session_state.df_registros.empty:
+    st.dataframe(st.session_state.df_registros, use_container_width=True)
 else:
-    st.info("Aún no hay registros guardados. ¡Haz el primero arriba!")
+    st.info("Aún no hay registros en esta sesión. ¡Haz el primero arriba!")
