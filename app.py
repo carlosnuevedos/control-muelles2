@@ -256,6 +256,11 @@ if modo_app == "Control Lanzaderas":
     pallets_descarga = 33
     d_llegada_h = d_llegada_m = d_inicio_h = d_inicio_m = d_fin_h = d_fin_m = 8
 
+    # Variables de descarga por defecto seguras
+    t_lleg_d = 0
+    t_ini_d = 0
+    t_fin_d = 0
+
     if activar_descarga:
         st.markdown("#### Tiempos de Descarga")
         col_d1, col_d2 = st.columns(2)
@@ -305,6 +310,11 @@ if modo_app == "Control Lanzaderas":
     c_inicio_m = 0
     c_fin_h = 10
     c_fin_m = 0
+
+    # Variables de carga por defecto seguras
+    t_lleg_c = 0
+    t_ini_c = 0
+    t_fin_c = 0
 
     if activar_carga:
         st.markdown("#### Tiempos y Referencia de Carga (Lanzadera)")
@@ -410,7 +420,7 @@ if modo_app == "Control Lanzaderas":
                         min_esp_c = 0 if activar_descarga else (t_ini_c - t_lleg_c)
                         hora_llegada_str = f"{d_fin_h:02d}:{d_fin_m:02d} (Post-Descarga)" if activar_descarga else f"{c_llegada_h:02d}:{c_llegada_m:02d}"
                         min_tot_c = (t_fin_c - t_lleg_d) if activar_descarga else (t_fin_c - t_lleg_c)
-                        min_op_c = t_fin_c - t_inicio_c
+                        min_op_c = t_fin_c - t_ini_c
                         turno_calc_c = calcular_turno(c_inicio_h, c_inicio_m)
                         nuevos_datos.append([
                             fecha_registro.strftime("%Y-%m-%d"), matricula.upper(),
@@ -537,13 +547,11 @@ elif modo_app == "Cargas de Cliente":
                         st.success(f"✅ ¡Carga de cliente **{transporte.upper()}** guardada en la pestaña 'Cargas de cliente'!")
                         st.balloons()
                         
-                        # Restablecer valores limpiando las claves de session_state de este apartado
                         claves_cli_a_borrar = ["num_transporte", "inc_cli", "opt_etiquetas", "p_cli_otro", "sel_carr_cli"]
                         for clave in claves_cli_a_borrar:
                             if clave in st.session_state:
                                 del st.session_state[clave]
 
-                        # Redirección automática hacia arriba (#top-section)
                         st.markdown("<script>window.location.hash = '#top-section';</script>", unsafe_allow_html=True)
                         time.sleep(1.2)
                         st.rerun()
