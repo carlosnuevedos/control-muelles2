@@ -116,8 +116,9 @@ with col_titulo:
 
 st.divider()
 
-# --- CONFIGURACIÓN DE URL DE APPS SCRIPT ACTUALIZADA ---
+# --- CONFIGURACIÓN DE URL DE APPS SCRIPT Y GOOGLE SHEETS ---
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyP9cpZSNJdUfEWATW0gIfot-Mg_9_wDy_LZeYY52Ln-kkrWHlQ4PhbLg1iHRcJQncj5Q/exec"
+ENLACE_GOOGLE_SHEET = "https://docs.google.com/spreadsheets/d/1YourSheetIdHere" # Opcional si quieres enlace directo
 
 # Lista base por defecto para carretilleros
 CARRETILLEROS_BASE = [
@@ -131,6 +132,13 @@ COLS_NECESARIAS_LANZADERAS = [
     "Hora Llegada", "Hora Inicio", "Hora Fin", 
     "Min. Espera", "Min. Operación", "Min. Totales",
     "Pallets", "Carretillero", "Turno", "Incidencias"
+]
+
+# Columnas oficiales para Cargas de Cliente
+COLS_NECESARIAS_CLIENTES = [
+    "Fecha Registro", "Transporte", "Hora Picada", "Hora Comienzo", 
+    "Hora Fin", "Min. Operación", "Min. Espera", "Pallets", 
+    "Carretillero", "Etiquetas", "Turno", "Incidencias"
 ]
 
 # --- FUNCIÓN PARA CARGAR DESDE GOOGLE SHEETS ---
@@ -486,9 +494,10 @@ if modo_app == "Control Lanzaderas":
                     st.error(f"❌ Error: {e}")
 
     st.divider()
-    st.subheader("📊 Historial de Lanzaderas (En Memoria)")
+    st.subheader("📊 Últimos 5 Registros (Lanzaderas)")
     if not st.session_state.df_registros.empty:
-        st.dataframe(st.session_state.df_registros, use_container_width=True)
+        # Mostrar solo los últimos 5 registros
+        st.dataframe(st.session_state.df_registros.tail(5), use_container_width=True)
     else:
         st.info("Aún no hay registros.")
 
@@ -598,3 +607,14 @@ elif modo_app == "Cargas de Cliente":
                         st.error(f"❌ Error al conectar con Google Sheets: {response.text}")
                 except Exception as e:
                     st.error(f"❌ Error al procesar: {e}")
+
+    st.divider()
+    st.subheader("📊 Últimos 5 Registros (Cargas de Cliente)")
+    
+    # Para la sección de clientes, cargamos también los datos específicos desde la pestaña si se desea, 
+    # o mostramos un resumen del historial en memoria filtrado o actualizado.
+    # Aquí puedes enlazar o mostrar los últimos registros de cliente disponibles en memoria o hacer una lectura rápida.
+    if not st.session_state.df_registros.empty:
+        st.dataframe(st.session_state.df_registros.tail(5), use_container_width=True)
+    else:
+        st.info("Aún no hay registros de cliente en memoria.")
