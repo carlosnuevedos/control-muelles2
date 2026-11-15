@@ -136,8 +136,23 @@ def calcular_turno(hora, minuto):
 lista_horas = list(range(0, 24))
 lista_minutos = list(range(0, 60, 5))
 
-# Ancla invisible arriba del todo para el scroll automático
+# Ancla invisible arriba del todo para el scroll automático instantáneo
 st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
+
+# Función para forzar el scroll arriba mediante JavaScript avanzado
+def saltar_arriba():
+    st.markdown(
+        """
+        <script>
+            var body = window.parent.document.querySelector(".main");
+            if (body) {
+                body.scrollTop = 0;
+            }
+            window.scrollTo({top: 0, behavior: 'instant'});
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
 
 # ==========================================
 # SELECTOR DE MODO / APARTADO PRINCIPAL
@@ -256,7 +271,6 @@ if modo_app == "Control Lanzaderas":
     pallets_descarga = 33
     d_llegada_h = d_llegada_m = d_inicio_h = d_inicio_m = d_fin_h = d_fin_m = 8
 
-    # Variables de descarga por defecto seguras
     t_lleg_d = 0
     t_ini_d = 0
     t_fin_d = 0
@@ -311,7 +325,6 @@ if modo_app == "Control Lanzaderas":
     c_fin_h = 10
     c_fin_m = 0
 
-    # Variables de carga por defecto seguras
     t_lleg_c = 0
     t_ini_c = 0
     t_fin_c = 0
@@ -420,7 +433,7 @@ if modo_app == "Control Lanzaderas":
                         min_esp_c = 0 if activar_descarga else (t_ini_c - t_lleg_c)
                         hora_llegada_str = f"{d_fin_h:02d}:{d_fin_m:02d} (Post-Descarga)" if activar_descarga else f"{c_llegada_h:02d}:{c_llegada_m:02d}"
                         min_tot_c = (t_fin_c - t_lleg_d) if activar_descarga else (t_fin_c - t_lleg_c)
-                        min_op_c = t_fin_c - t_ini_c
+                        min_op_c = t_fin_c - t_inicio_c
                         turno_calc_c = calcular_turno(c_inicio_h, c_inicio_m)
                         nuevos_datos.append([
                             fecha_registro.strftime("%Y-%m-%d"), matricula.upper(),
@@ -434,12 +447,15 @@ if modo_app == "Control Lanzaderas":
                     if response.status_code == 200:
                         st.success(f"✅ ¡Guardado en Google Sheets para **{matricula.upper()}**!")
                         st.balloons()
+                        
+                        # Borrar claves del estado para restablecer formulario
                         for c in ["input_nueva_mat_lanz", "alb_desc", "input_albaran_lanz", "input_albaran_custom", "chk_descarga", "chk_carga", "incidencias_input_lanz"]:
                             if c in st.session_state: del st.session_state[c]
                         st.session_state.df_registros = cargar_registros_desde_sheets()
                         
-                        st.markdown("<script>window.location.hash = '#top-section';</script>", unsafe_allow_html=True)
-                        time.sleep(1.2)
+                        # Forzar scroll arriba antes del rerun
+                        saltar_arriba()
+                        time.sleep(0.8)
                         st.rerun()
                     else:
                         st.error(f"❌ Error en servidor: {response.text}")
@@ -552,8 +568,9 @@ elif modo_app == "Cargas de Cliente":
                             if clave in st.session_state:
                                 del st.session_state[clave]
 
-                        st.markdown("<script>window.location.hash = '#top-section';</script>", unsafe_allow_html=True)
-                        time.sleep(1.2)
+                        # Forzar scroll arriba antes del rerun
+                        saltar_arriba()
+                        time.sleep(0.8)
                         st.rerun()
                     else:
                         st.error(f"❌ Error al conectar con Google Sheets: {response.text}")
