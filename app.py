@@ -114,8 +114,8 @@ if modo_app == "Control Lanzaderas":
         fecha_registro = st.date_input("Fecha del Registro", value=datetime.now(), key="f_lanz")
 
     with col_f2:
-        st.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
-        st.markdown("**Carretillero**")
+        # Etiqueta perfectamente alineada con la altura de la etiqueta de st.date_input
+        st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 6px; color: inherit;">Carretillero</p>', unsafe_allow_html=True)
         
         if st.session_state.modo_carr == "Seleccionar existente":
             carretillero = st.selectbox("Carretillero", carretilleros_existentes, label_visibility="collapsed", key="select_carretillero_existente_lanz")
@@ -240,7 +240,6 @@ if modo_app == "Control Lanzaderas":
         str_fecha_ddmmaa = fecha_registro.strftime("%d%m%y")
         df_actual = st.session_state.df_registros
         
-        # Calcular la sugerencia que corresponde según la opción elegida
         if tipo_lanzadera in ["P (Lanzadera)", "M (Lanzadera)"]:
             letra_prefijo = "P" if tipo_lanzadera.startswith("P") else "M"
             siguiente_num = 1
@@ -250,7 +249,6 @@ if modo_app == "Control Lanzaderas":
                 siguiente_num = conteo_coincidencias + 1
             sugerencia_codigo = f"{letra_prefijo}{str_fecha_ddmmaa}-{siguiente_num}"
             
-            # Forzamos directamente la actualización del session_state para que cambie al vuelo
             st.session_state["input_albaran_lanz"] = sugerencia_codigo
             
             with col_tc2:
@@ -424,13 +422,8 @@ elif modo_app == "Cargas de Cliente":
                 st.error("⚠️ Incongruencia horaria: La hora picada debe ser anterior al comienzo, y el comienzo anterior al fin.")
             else:
                 try:
-                    # Columna F: Minutos de Operación (desde comienzo hasta fin)
                     min_operacion = t_fin - t_comienzo
-                    
-                    # Columna G: Minutos de espera totales (desde picada hasta fin de carga)
                     min_espera_totales = t_fin - t_picada
-
-                    # Cálculo automático del turno según la Hora de Comienzo
                     turno_calc_cli = calcular_turno(ci_h, ci_m)
                     
                     fila_cliente = [[
@@ -439,13 +432,13 @@ elif modo_app == "Cargas de Cliente":
                         f"{ph_h:02d}:{ph_m:02d}",
                         f"{ci_h:02d}:{ci_m:02d}",
                         f"{cf_h:02d}:{cf_m:02d}",
-                        int(min_operacion),       # Columna F: Minutos Operación
-                        int(min_espera_totales),  # Columna G: Minutos de espera totales
-                        int(num_pallets_cli),     # Columna H
-                        carretillero_cli,         # Columna I
-                        opcion_etiquetas,         # Columna J
-                        turno_calc_cli,           # Columna K: Turno automático
-                        incidencias_cli.strip() if incidencias_cli else "" # Columna L: Incidencias
+                        int(min_operacion),
+                        int(min_espera_totales),
+                        int(num_pallets_cli),
+                        carretillero_cli,
+                        opcion_etiquetas,
+                        turno_calc_cli,
+                        incidencias_cli.strip() if incidencias_cli else ""
                     ]]
 
                     response = requests.post(WEB_APP_URL, json={"action": "update_cliente", "rows": fila_cliente})
