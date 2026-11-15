@@ -264,12 +264,14 @@ if submitted:
             try:
                 nuevos_datos = []
                 
+                # Texto de incidencias limpio (vacío si no se escribe nada)
+                texto_incidencias = incidencias.strip() if incidencias else ""
+                
                 if activar_descarga:
                     min_esp_d = t_ini_d - t_lleg_d
                     min_op_d = t_fin_d - t_ini_d
                     min_tot_d = "" if activar_carga else (t_fin_d - t_lleg_d)
                     
-                    # Turno calculado con la hora de INICIO de la descarga
                     turno_calc_d = calcular_turno(d_inicio_h, d_inicio_m)
                     
                     nuevos_datos.append([
@@ -286,7 +288,7 @@ if submitted:
                         int(pallets_descarga),
                         carretillero,
                         turno_calc_d,
-                        incidencias if incidencias else "Ninguna"
+                        texto_incidencias
                     ])
 
                 if activar_carga:
@@ -301,7 +303,6 @@ if submitted:
                     
                     min_op_c = t_fin_c - t_ini_c
                     
-                    # Turno calculado con la hora de INICIO de la carga
                     turno_calc_c = calcular_turno(c_inicio_h, c_inicio_m)
                     
                     nuevos_datos.append([
@@ -318,7 +319,7 @@ if submitted:
                         int(pallets_carga),
                         carretillero,
                         turno_calc_c,
-                        incidencias if incidencias else "Ninguna"
+                        texto_incidencias
                     ])
 
                 # 1. Enviar a Google Sheets vía Web App
