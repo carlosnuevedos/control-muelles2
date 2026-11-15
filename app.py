@@ -13,8 +13,8 @@ st.write("Conectado a Google Sheets mediante Google Apps Script.")
 # --- CONFIGURACIÓN DE URL DE APPS SCRIPT ACTUALIZADA ---
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyP9cpZSNJdUfEWATW0gIfot-Mg_9_wDy_LZeYY52Ln-kkrWHlQ4PhbLg1iHRcJQncj5Q/exec"
 
-# Lista de carretilleros disponibles
-LISTA_CARRETILLEROS = [
+# Lista base por defecto (por si el Google Sheet está vacío al principio)
+CARRETILLEROS_BASE = [
     "C. Alías", "C. Díaz", "M. José", "David", "Andreu", 
     "Raúl", "Álvaro", "Daniel", "J. A. Lara", "J. A. Vega", "Sergio", "Samuel"
 ]
@@ -71,18 +71,68 @@ st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
 
 st.subheader("Nuevo Registro de Vehículo")
 
-# 1. Fecha, Matrícula y Carretillero
+# 1. Fecha y Carretillero
 col_f1, col_f2 = st.columns(2)
 with col_f1:
     fecha_registro = st.date_input("Fecha del Registro", value=datetime.now())
-    carretillero = st.selectbox("Carretillero", LISTA_CARRETILLEROS)
+
+# --- GESTIÓN DINÁMICA DE CARRETILLEROS ---
+# Unimos la lista base con los carretilleros que ya existan en Google Sheets (Columna de carretillero = índice 11)
+carretilleros_existentes = list(CARRETILLEROS_BASE)
+if not st.session_state.df_registros.empty and len(st.session_state.df_registros.columns) > 11:
+    col_carretilleros_historico = st.session_state.df_registros.iloc[:, 11].dropna().astype(str).str.strip().unique().tolist()
+    for c in col_carretilleros_historico:
+        if c and c not in carretilleros_existentes:
+            carretilleros_existentes.append(c)
+
+# Añadimos también los nuevos que se hayan agregado en la sesión actual si los hay
+if "carretilleros_extra" not in st.session_state:
+    st.session_state.carretilleros_extra = []
+
+for c in st.session_state.carretilleros_extra:
+    if c not in carretilleros_existentes:
+        carretilleros_existentes.append(c)
+
+carretilleros_existentes = sorted(carretilleros_existentes)
+
+with col_f2:
+    modo_carretillero = st.radio(
+        "Modo Carretillero", 
+        ["Seleccionar existente", "➕ Añadir nuevo"], 
+        horizontal=True, 
+        label_visibility="collapsed",
+        key="tipo_radio_carretillero"
+    )
+    
+    if modo_carretillero == "Seleccionar existente":
+        carretillero = st.selectbox("Carretillero", carretilleros_existentes, key="select_carretillero_existente")
+    else:
+        col_nc1, col_nc2 = st.columns([0.7, 0.3])
+        with col_nc1:
+            nuevo_carr = st.text_input("Nombre del nuevo carretillero", key="input_nuevo_carr", placeholder="Ej: J. Pérez").strip()
+        with col_nc2:
+            st.write("") # Espaciador vertical visual
+            btn_add_carr = st.button("Añadir", key="btn_guardar_nuevo_carr")
+        
+        if btn_add_carr:
+            if nuevo_carr:
+                if nuevo_carr not in st.session_state.carretilleros_extra:
+                    st.session_state.carretilleros_extra.append(nuevo_carr)
+                st.success(f"¡'{nuevo_carr}' añadido!")
+                st.rerun()
+            else:
+                st.warning("Escribe un nombre válido.")
+        
+        carretillero = nuevo_carr if nuevo_carr else (carretilleros_existentes[0] if carretilleros_existentes else "")
 
 # Extraer matrículas existentes desde la Columna B (índice 1)
 matriculas_guardadas = []
 if not st.session_state.df_registros.empty:
     matriculas_guardadas = sorted(st.session_state.df_registros.iloc[:, 1].dropna().astype(str).str.strip().unique().tolist())
 
-with col_f2:
+st.write("") # Separador
+col_m1, col_m2 = st.columns(2)
+with col_m1:
     tipo_ingreso_mat = st.radio(
         "Matrícula:", 
         ["Seleccionar existente", "Escribir nueva"], 
@@ -249,6 +299,8 @@ submitted = st.button("Guardar Registros")
 if submitted:
     if not matricula:
         st.error("Por favor, introduce o selecciona una matrícula.")
+    elif not carretillero:
+        st.error("Por favor, selecciona o introduce un carretillero.")
     elif not activar_descarga and not activar_carga:
         st.warning("Debes marcar al menos una opción: Descarga o Carga.")
     else:
@@ -263,8 +315,6 @@ if submitted:
         else:
             try:
                 nuevos_datos = []
-                
-                # Texto de incidencias limpio (vacío si no se escribe nada)
                 texto_incidencias = incidencias.strip() if incidencias else ""
                 
                 if activar_descarga:
@@ -332,7 +382,7 @@ if submitted:
                     # Limpiar claves de sesión para reiniciar campos
                     claves_a_borrar = [
                         "input_nueva_mat", "alb_desc", "alb_lanzadera", "alb_custom", 
-                        "chk_descarga", "chk_carga", "incidencias_input"
+                        "chk_descarga", "chk_carga", "incidencias_input", "input_nuevo_carr"
                     ]
                     for clave in claves_a_borrar:
                         if clave in st.session_state:
