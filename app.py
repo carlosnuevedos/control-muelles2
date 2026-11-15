@@ -8,7 +8,7 @@ from PIL import Image
 # Configuración de la página web
 st.set_page_config(page_title="Control de Muelles - Almacén", page_icon="🚛", layout="centered")
 
-# --- ESTILOS CSS PERSONALIZADOS (FUENTE MÁS PROFESIONAL Y LIMPIA) ---
+# --- ESTILOS CSS PERSONALIZADOS (FUENTE CORPORATIVA) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
@@ -24,18 +24,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CABECERA CORPORATIVA CON LOGO Y TÍTULO ---
+# --- CABECERA CORPORATIVA CON LOGO Y TÍTULO LIMPIO ---
 col_logo, col_titulo = st.columns([0.18, 0.82])
 
 with col_logo:
     try:
         logo = Image.open("AZENTIS-SIN-FONDO.png")
-        st.image(logo, width=85)
+        st.image(logo, width=80)
     except Exception:
-        st.write("🚛") # Fallback por si la imagen no está en la ruta
+        # Fallback por si la imagen no se encuentra en la ruta local
+        st.write("") 
 
 with col_titulo:
-    st.markdown("<h2 style='padding-top: 5px; margin-bottom: 0px;'>Control de Muelles y Cargas</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='padding-top: 2px; margin-bottom: 0px;'>Control de Muelles y Cargas</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #555555; font-weight: 500; margin-top: 2px;'>Azentis Persán La Red • Conectado a Google Sheets</p>", unsafe_allow_html=True)
 
 st.divider()
