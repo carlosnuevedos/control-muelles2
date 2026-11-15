@@ -27,7 +27,7 @@ COLS_NECESARIAS = [
     "Pallets", "Carretillero", "Turno", "Incidencias"
 ]
 
-# --- FUNCIÓN PARA LEER SIEMPRE FRESCO DE GOOGLE SHEETS (SIN CACHÉ) ---
+# --- FUNCIÓN PARA CARGAR DESDE GOOGLE SHEETS ---
 def cargar_registros_desde_sheets():
     try:
         url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
@@ -48,8 +48,11 @@ def cargar_registros_desde_sheets():
     
     return pd.DataFrame(columns=COLS_NECESARIAS)
 
-# Cargar siempre datos frescos al iniciar o recargar
-st.session_state.df_registros = cargar_registros_desde_sheets()
+# =========================================================================
+# OPTIMIZACIÓN: Cargar de Google Sheets SOLO al iniciar la sesión en memoria
+# =========================================================================
+if "df_registros" not in st.session_state:
+    st.session_state.df_registros = cargar_registros_desde_sheets()
 
 # Función para calcular el turno según la hora y minuto
 def calcular_turno(hora, minuto):
@@ -170,17 +173,14 @@ if activar_carga:
     if tipo_lanzadera in ["P (Lanzadera)", "M (Lanzadera)"]:
         letra_prefijo = "P" if tipo_lanzadera.startswith("P") else "M"
         
-        # --- CÁLCULO BASADO DIRECTAMENTE EN EL PREFIJO DEL ALBARÁN ---
+        # --- CÁLCULO BASADO EN LOS DATOS EN MEMORIA (instantáneo) ---
         siguiente_num = 1
         if not df_actual.empty:
             prefijo_buscado = f"{letra_prefijo}{str_fecha_ddmmaa}-".upper()
             
             conteo_coincidencias = 0
             for index, row in df_actual.iterrows():
-                # Columna C (índice 2) = Albarán
                 val_albaran = str(row.iloc[2]).strip().upper()
-                
-                # Si el albarán empieza por el prefijo (ej. P131126-), cuenta como de esta serie
                 if val_albaran.startswith(prefijo_buscado):
                     conteo_coincidencias += 1
             
@@ -288,6 +288,7 @@ if submitted:
                         turno_calc = calcular_turno(c_llegada_h, c_llegada_m)
                         min_tot_c = t_fin_c - t_lleg_c
                     
+                    min_op_c = t_fin_c - t_inicio_m # (o t_fin_c - t_ini_c)
                     min_op_c = t_fin_c - t_ini_c
                     
                     nuevos_datos.append([
@@ -323,6 +324,11 @@ if submitted:
                         if clave in st.session_state:
                             del st.session_state[clave]
                     
+                    # =========================================================================
+                    # OPTIMIZACIÓN: Refrescar la memoria SOLO TRAS GUARDAR con éxito
+                    # =========================================================================
+                    st.session_state.df_registros = cargar_registros_desde_sheets()
+                    
                     time.sleep(1.2)
                     st.rerun()
                 else:
@@ -332,7 +338,7 @@ if submitted:
                 st.error(f"❌ Error al procesar el guardado: {e}")
 
 st.divider()
-st.subheader("📊 Historial de Registros (Cargados en Vivo desde Google Sheets)")
+st.subheader("📊 Historial de Registros (Cargados en Memoria)")
 if not st.session_state.df_registros.empty:
     st.dataframe(st.session_state.df_registros, use_container_width=True)
 else:
