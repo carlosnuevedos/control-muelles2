@@ -81,7 +81,11 @@ if activar_descarga:
     with col_d1:
         albaran_descarga = st.text_input("Nº de Albarán (Descarga)", key="alb_desc")
     with col_d2:
-        pallets_descarga = st.number_input("Pallets Descargados", min_value=1, max_value=200, value=1, key="p_desc")
+        opcion_pallets_d = st.selectbox("Pallets Descargados", ["33", "26", "Otra cantidad"], key="opt_p_desc")
+        if opcion_pallets_d == "Otra cantidad":
+            pallets_descarga = st.number_input("Especifica cantidad de pallets", min_value=1, max_value=200, value=1, key="p_desc_otro")
+        else:
+            pallets_descarga = int(opcion_pallets_d)
     
     st.write("**Horarios de Descarga:**")
     c_lh, c_lm = st.columns(2)
@@ -126,7 +130,11 @@ if activar_carga:
     with col_c1:
         albaran_carga = st.text_input("Nº de Albarán / Pedido (Carga)", key="alb_carg")
     with col_c2:
-        pallets_carga = st.number_input("Pallets Cargados", min_value=1, max_value=200, value=1, key="p_carg")
+        opcion_pallets_c = st.selectbox("Pallets Cargados", ["33", "26", "Otra cantidad"], key="opt_p_carg")
+        if opcion_pallets_c == "Otra cantidad":
+            pallets_carga = st.number_input("Especifica cantidad de pallets", min_value=1, max_value=200, value=1, key="p_carg_otro")
+        else:
+            pallets_carga = int(opcion_pallets_c)
     
     if activar_descarga:
         c_llegada_h = d_fin_h
@@ -184,7 +192,6 @@ if submitted:
                     min_esp_d = t_ini_d - t_lleg_d
                     min_op_d = t_fin_d - t_ini_d
                     
-                    # Si hay carga posterior, dejamos Min. Totales vacío ("") para evitar duplicidades al sumar
                     if activar_carga:
                         min_tot_d = "" 
                     else:
@@ -214,7 +221,6 @@ if submitted:
                         min_esp_c = 0
                         hora_llegada_str = f"{d_fin_h:02d}:{d_fin_m:02d} (Post-Descarga)"
                         turno_calc = calcular_turno(d_fin_h, d_fin_m)
-                        # Minutos totales globales desde la llegada inicial de la descarga hasta el fin de la carga
                         min_tot_c = t_fin_c - t_lleg_d
                     else:
                         min_esp_c = t_ini_c - t_lleg_c
@@ -241,11 +247,10 @@ if submitted:
                         incidencias if incidencias else "Ninguna"
                     ])
 
-                # 1. Enviar a Google Sheets vía Web App (Fuente de verdad oficial)
+                # 1. Enviar a Google Sheets vía Web App
                 response = requests.post(WEB_APP_URL, json={"action": "update", "rows": nuevos_datos})
                 
                 if response.status_code == 200:
-                    # 2. Actualizar la tabla visual en memoria de la sesión
                     df_nuevo = pd.DataFrame(nuevos_datos, columns=COLS_NECESARIAS)
                     st.session_state.df_registros = pd.concat([st.session_state.df_registros, df_nuevo], ignore_index=True)
                     
@@ -260,8 +265,4 @@ if submitted:
                 st.error(f"❌ Error al procesar el guardado: {e}")
 
 st.divider()
-st.subheader("📊 Historial de Registros (Sesión actual)")
-if not st.session_state.df_registros.empty:
-    st.dataframe(st.session_state.df_registros, use_container_width=True)
-else:
-    st.info("Aún no hay registros en esta sesión. ¡Haz el primero arriba!")
+st.subheader("📊 Historial de Registros
