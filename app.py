@@ -10,7 +10,7 @@ st.set_page_config(page_title="Control de Muelles - Almacén", page_icon="🚛",
 st.title("🚛 Registro de Carga y Descarga en Muelle (Online)")
 st.write("Conectado a Google Sheets mediante Google Apps Script.")
 
-# --- CONFIGURACIÓN DE URL DE APPS SCRIPT (Actualizada) ---
+# --- CONFIGURACIÓN DE URL DE APPS SCRIPT ---
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw9oPFCuuCOcMTIpbIQZipYlpmyrWtfSmjKQdpae3beI3D9Pp-iZTbMfRypXtzXAtOSNQ/exec"
 
 # Lista de carretilleros disponibles
@@ -153,6 +153,15 @@ if activar_carga:
     col_tc1, col_tc2, col_tc3 = st.columns(3)
     with col_tc1:
         tipo_lanzadera = st.selectbox("Tipo de Referencia", ["P (Lanzadera)", "M (Lanzadera)", "Albarán Personalizado"], key="tipo_lanz")
+        
+        # Detectar si cambió el tipo de lanzadera para forzar actualización del código
+        if "ultimo_tipo_lanz" not in st.session_state:
+            st.session_state.ultimo_tipo_lanz = tipo_lanzadera
+        elif st.session_state.ultimo_tipo_lanz != tipo_lanzadera:
+            st.session_state.ultimo_tipo_lanz = tipo_lanzadera
+            if "alb_lanzadera" in st.session_state:
+                del st.session_state["alb_lanzadera"]
+            st.rerun()
     
     str_fecha_ddmmaa = fecha_registro.strftime("%d%m%y")
     df_actual = st.session_state.df_registros
@@ -163,15 +172,21 @@ if activar_carga:
         siguiente_num = 1
         if not df_actual.empty and "Fecha Registro" in df_actual.columns and "Albarán" in df_actual.columns:
             fecha_str_buscada = fecha_registro.strftime("%Y-%m-%d")
+            
+            # Normalizar la columna de fechas a texto y extraer solo YYYY-MM-DD de forma segura
             df_actual["Fecha_str"] = df_actual["Fecha Registro"].astype(str).str.slice(0, 10)
             
             filtro_fecha = df_actual["Fecha_str"] == fecha_str_buscada
-            filtro_op = df_actual["Operación"].astype(str) == "Carga"
+            filtro_op = df_actual["Operación"].astype(str).str.strip().str.lower() == "carga"
             subset = df_actual[filtro_fecha & filtro_op]
             
             prefijo_buscado = f"{letra_prefijo}{str_fecha_ddmmaa}-"
-            coincidencias = subset[subset["Albarán"].astype(str).str.startswith(prefijo_buscado, na=False)]
-            siguiente_num = len(coincidencias) + 1
+            
+            # Contar cuántas empiezan exactamente por el prefijo (ej. M131126-)
+            if not subset.empty:
+                albaranes_serie = subset["Albarán"].astype(str).str.strip()
+                coincidencias = albaranes_serie[albaranes_serie.str.startswith(prefijo_buscado, na=False)]
+                siguiente_num = len(coincidencias) + 1
             
         sugerencia_codigo = f"{letra_prefijo}{str_fecha_ddmmaa}-{siguiente_num}"
         
