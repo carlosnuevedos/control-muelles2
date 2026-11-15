@@ -11,7 +11,7 @@ st.title("🚛 Registro de Carga y Descarga en Muelle (Online)")
 st.write("Conectado a Google Sheets mediante Google Apps Script.")
 
 # --- CONFIGURACIÓN DE URL DE APPS SCRIPT ---
-WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw9oPFCuuCOcMTIpbIQZipYlpmyrWtfSmjKQdpae3beI3D9Pp-iZTbMfRypXtzXAtOSNQ/exec"
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyP9cpZSNJdUfEWATW0gIfot-Mg_9_wDy_LZeYY52Ln-kkrWHlQ4PhbLg1iHRcJQncj5Q/exec/exec"
 
 # Lista de carretilleros disponibles
 LISTA_CARRETILLEROS = [
@@ -51,16 +51,6 @@ def cargar_registros_desde_sheets():
 # Cargar de Google Sheets al iniciar la sesión en memoria
 if "df_registros" not in st.session_state:
     st.session_state.df_registros = cargar_registros_desde_sheets()
-
-# --- PANEL DE CONTROL LATERAL (BOTÓN DE RECARGA MANUAL) ---
-with st.sidebar:
-    st.write("⚙️ **Panel de Control**")
-    if st.button("🔄 Recargar datos de Google Sheets"):
-        if "df_registros" in st.session_state:
-            del st.session_state["df_registros"]
-        st.session_state.df_registros = cargar_registros_desde_sheets()
-        st.success("¡Datos actualizados al momento!")
-        st.rerun()
 
 # Función para calcular el turno según la hora y minuto
 def calcular_turno(hora, minuto):
@@ -340,7 +330,7 @@ if submitted:
                         if clave in st.session_state:
                             del st.session_state[clave]
                     
-                    # Refrescar la memoria SOLO TRAS GUARDAR con éxito
+                    # Forzar recarga de memoria tras guardar
                     st.session_state.df_registros = cargar_registros_desde_sheets()
                     
                     time.sleep(1.2)
