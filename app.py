@@ -99,15 +99,18 @@ for c in st.session_state.carretilleros_extra:
 
 carretilleros_existentes = sorted(carretilleros_existentes)
 
-# --- DISEÑO EN 2 COLUMNAS ALINEADAS ---
+# --- DISEÑO EN 2 COLUMNAS PERFECTAMENTE ALINEADAS ---
 col_f1, col_f2 = st.columns(2)
 
-# FILA 1: Fecha (Izquierda) y Carretillero (Derecha) perfectamente alineados
+# FILA 1: Fecha (Izquierda) y Carretillero (Derecha) con compensación exacta de altura
 with col_f1:
     fecha_registro = st.date_input("Fecha del Registro", value=datetime.now())
 
 with col_f2:
-    st.markdown("##### Carretillero")
+    # Este espacio compensa exactamente la etiqueta de texto superior de la fecha para alinear los inputs
+    st.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
+    st.markdown("**Carretillero**")
+    
     if st.session_state.modo_carr == "Seleccionar existente":
         carretillero = st.selectbox("Carretillero", carretilleros_existentes, label_visibility="collapsed", key="select_carretillero_existente")
     else:
