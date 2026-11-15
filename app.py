@@ -30,7 +30,6 @@ COLS_NECESARIAS = [
 # --- FUNCIÓN PARA LEER SIEMPRE FRESCO DE GOOGLE SHEETS (SIN CACHÉ) ---
 def cargar_registros_desde_sheets():
     try:
-        # Añadimos un parámetro temporal único para evitar que Google o Streamlit cacheen la respuesta
         url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
         response = requests.post(url_fresca, json={"action": "leer"})
         if response.status_code == 200:
@@ -171,25 +170,21 @@ if activar_carga:
     if tipo_lanzadera in ["P (Lanzadera)", "M (Lanzadera)"]:
         letra_prefijo = "P" if tipo_lanzadera.startswith("P") else "M"
         
+        # --- CÁLCULO BASADO DIRECTAMENTE EN EL PREFIJO DEL ALBARÁN ---
         siguiente_num = 1
         if not df_actual.empty:
-            fecha_str_buscada = fecha_registro.strftime("%Y-%m-%d")
-            
-            # Columna A (0) = Fecha, Columna C (2) = Albarán, Columna D (3) = Operación
-            df_actual["Fecha_str"] = df_actual.iloc[:, 0].astype(str).str.slice(0, 10)
-            df_actual["Operacion_str"] = df_actual.iloc[:, 3].astype(str).str.strip().str.lower()
-            df_actual["Albaran_str"] = df_actual.iloc[:, 2].astype(str).str.strip().str.upper()
-            
-            filtro_fecha = df_actual["Fecha_str"] == fecha_str_buscada
-            filtro_op = df_actual["Operacion_str"] == "carga"
-            subset = df_actual[filtro_fecha & filtro_op]
-            
             prefijo_buscado = f"{letra_prefijo}{str_fecha_ddmmaa}-".upper()
             
-            if not subset.empty:
-                albaranes_serie = subset["Albaran_str"]
-                coincidencias = albaranes_serie[albaranes_serie.str.startswith(prefijo_buscado, na=False)]
-                siguiente_num = len(coincidencias) + 1
+            conteo_coincidencias = 0
+            for index, row in df_actual.iterrows():
+                # Columna C (índice 2) = Albarán
+                val_albaran = str(row.iloc[2]).strip().upper()
+                
+                # Si el albarán empieza por el prefijo (ej. P131126-), cuenta como de esta serie
+                if val_albaran.startswith(prefijo_buscado):
+                    conteo_coincidencias += 1
+            
+            siguiente_num = conteo_coincidencias + 1
             
         sugerencia_codigo = f"{letra_prefijo}{str_fecha_ddmmaa}-{siguiente_num}"
         
@@ -222,7 +217,7 @@ if activar_carga:
     with ci_h:
         c_inicio_h = st.selectbox("Hora Inicio (Carga)", lista_horas, index=c_llegada_h, key="ci_h")
     with ci_im:
-        c_inicio_m = st.selectbox("Minutos Inicio (Carga)", lista_minutos, index=0, key="ci_m")
+        c_inicio_m = st.selectbox("Minutos Inicio (Carga)", lista_minutos, index=0, key="ci_im")
         
     cf_h, cf_fm = st.columns(2)
     with cf_h:
