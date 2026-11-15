@@ -10,7 +10,7 @@ st.set_page_config(page_title="Control de Muelles - Almacén", page_icon="🚛",
 st.title("🚛 Registro de Carga y Descarga en Muelle (Online)")
 st.write("Conectado a Google Sheets mediante Google Apps Script.")
 
-# --- CONFIGURACIÓN DE URL DE APPS SCRIPT ---
+# --- CONFIGURACIÓN DE URL DE APPS SCRIPT ACTUALIZADA ---
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyP9cpZSNJdUfEWATW0gIfot-Mg_9_wDy_LZeYY52Ln-kkrWHlQ4PhbLg1iHRcJQncj5Q/exec"
 
 # Lista de carretilleros disponibles
@@ -52,7 +52,7 @@ def cargar_registros_desde_sheets():
 if "df_registros" not in st.session_state:
     st.session_state.df_registros = cargar_registros_desde_sheets()
 
-# Función para calcular el turno según la hora y minuto
+# Función para calcular el turno según la hora y minuto de INICIO
 def calcular_turno(hora, minuto):
     total_minutos = (hora * 60) + minuto
     if 360 <= total_minutos <= 835:
@@ -159,6 +159,10 @@ albaran_carga = ""
 pallets_carga = 33
 c_llegada_h = 9
 c_llegada_m = 0
+c_inicio_h = 9
+c_inicio_m = 0
+c_fin_h = 10
+c_fin_m = 0
 
 if activar_carga:
     st.markdown("#### Tiempos y Referencia de Carga (Lanzadera)")
@@ -264,7 +268,9 @@ if submitted:
                     min_esp_d = t_ini_d - t_lleg_d
                     min_op_d = t_fin_d - t_ini_d
                     min_tot_d = "" if activar_carga else (t_fin_d - t_lleg_d)
-                    turno_calc = calcular_turno(d_llegada_h, d_llegada_m)
+                    
+                    # Turno calculado con la hora de INICIO de la descarga
+                    turno_calc_d = calcular_turno(d_inicio_h, d_inicio_m)
                     
                     nuevos_datos.append([
                         fecha_registro.strftime("%Y-%m-%d"),
@@ -279,7 +285,7 @@ if submitted:
                         min_tot_d if min_tot_d == "" else int(min_tot_d),
                         int(pallets_descarga),
                         carretillero,
-                        turno_calc,
+                        turno_calc_d,
                         incidencias if incidencias else "Ninguna"
                     ])
 
@@ -287,15 +293,16 @@ if submitted:
                     if activar_descarga:
                         min_esp_c = 0
                         hora_llegada_str = f"{d_fin_h:02d}:{d_fin_m:02d} (Post-Descarga)"
-                        turno_calc = calcular_turno(d_fin_h, d_fin_m)
                         min_tot_c = t_fin_c - t_lleg_d
                     else:
                         min_esp_c = t_ini_c - t_lleg_c
                         hora_llegada_str = f"{c_llegada_h:02d}:{c_llegada_m:02d}"
-                        turno_calc = calcular_turno(c_llegada_h, c_llegada_m)
                         min_tot_c = t_fin_c - t_lleg_c
                     
                     min_op_c = t_fin_c - t_ini_c
+                    
+                    # Turno calculado con la hora de INICIO de la carga
+                    turno_calc_c = calcular_turno(c_inicio_h, c_inicio_m)
                     
                     nuevos_datos.append([
                         fecha_registro.strftime("%Y-%m-%d"),
@@ -310,7 +317,7 @@ if submitted:
                         int(min_tot_c),
                         int(pallets_carga),
                         carretillero,
-                        turno_calc,
+                        turno_calc_c,
                         incidencias if incidencias else "Ninguna"
                     ])
 
@@ -330,7 +337,7 @@ if submitted:
                         if clave in st.session_state:
                             del st.session_state[clave]
                     
-                    # Forzar recarga de memoria tras guardar
+                    # Refrescar la memoria SOLO TRAS GUARDAR con éxito
                     st.session_state.df_registros = cargar_registros_desde_sheets()
                     
                     time.sleep(1.2)
