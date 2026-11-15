@@ -29,7 +29,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- ESTILOS CSS PERSONALIZADOS (INCLUYENDO BOTÓN FLOTANTE) ---
+# --- ESTILOS CSS PERSONALIZADOS (BOTÓN FLOTANTE MINIMALISTA Y TRANSPARENTE) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
@@ -60,37 +60,41 @@ st.markdown("""
             user-select: none;
         }
 
-        /* --- ESTILO DEL BOTÓN FLOTANTE PARA SUBIR ARRIBA --- */
+        /* --- BOTÓN FLOTANTE TRANSPARENTE, SENCILLO Y ELEVADO (EVITA MANAGE APP) --- */
         .btn-flotante-arriba {
             position: fixed;
-            bottom: 25px;
+            bottom: 85px; /* Subido para esquivar el widget de Streamlit */
             right: 25px;
-            background-color: #000000;
-            color: white !important;
-            padding: 12px 16px;
-            border-radius: 50px;
+            background-color: rgba(255, 255, 255, 0.75); /* Fondo blanco semitransparente */
+            color: #000000 !important;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
             text-align: center;
-            box-shadow: 0px 4px 12px rgba(0,0,0,0.3);
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.15);
             z-index: 99999;
             text-decoration: none;
             font-weight: 700;
-            font-size: 16px;
+            font-size: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background-color 0.2s ease, transform 0.2s ease;
+            backdrop-filter: blur(4px); /* Efecto cristal desenfocado */
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            transition: background-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
         }
         .btn-flotante-arriba:hover {
-            background-color: #333333;
-            transform: scale(1.05);
-            color: white !important;
+            background-color: rgba(0, 0, 0, 0.85); /* Se vuelve oscuro al pasar el ratón/tocar */
+            color: #ffffff !important;
+            transform: scale(1.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- BOTÓN FLOTANTE HTML INYECTADO EN LA PÁGINA ---
+# --- BOTÓN FLOTANTE HTML INYECTADO (SOLO FLECHA) ---
 st.markdown(
-    '<a href="#top-section" class="btn-flotante-arriba" title="Volver arriba">⬆️ Subir</a>',
+    '<a href="#top-section" class="btn-flotante-arriba" title="Volver arriba">⬆️</a>',
     unsafe_allow_html=True
 )
 
@@ -108,7 +112,7 @@ with col_logo:
 
 with col_titulo:
     st.markdown("<h2 style='padding-top: 2px; margin-bottom: 0px;'>Control de Muelles y Cargas</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #555555; font-weight: 500; margin-top: 2px;'>Azentis Persán La Red • Conectado à Google Sheets</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #555555; font-weight: 500; margin-top: 2px;'>Azentis Persán La Red • Conectado a Google Sheets</p>", unsafe_allow_html=True)
 
 st.divider()
 
@@ -154,8 +158,8 @@ def cargar_registros_desde_sheets():
 if "df_registros" not in st.session_state:
     st.session_state.df_registros = cargar_registros_desde_sheets()
 
-# Calcular fecha actual ajustada a España (CET/CEST - UTC+1 / UTC+2) para evitar desfases con el servidor
-zona_espana = timezone(timedelta(hours=1)) # Ajustable según horario de verano/invierno, o datetime.now() local
+# Calcular fecha actual ajustada a España (CET/CEST)
+zona_espana = timezone(timedelta(hours=1))
 fecha_hoy_local = datetime.now(zona_espana).date() if hasattr(datetime, 'now') else datetime.now().date()
 
 # Función para calcular el turno según la hora y minuto de INICIO
@@ -562,7 +566,7 @@ elif modo_app == "Cargas de Cliente":
                     turno_calc_cli = calcular_turno(ci_h, ci_m)
                     
                     fila_cliente = [[
-                        fecha_cliente.strftime("%Y-%m-d"),
+                        fecha_cliente.strftime("%Y-%m-%d"),
                         transporte.strip().upper(),
                         f"{ph_h:02d}:{ph_m:02d}",
                         f"{ci_h:02d}:{ci_m:02d}",
