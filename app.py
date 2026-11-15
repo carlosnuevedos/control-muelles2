@@ -8,7 +8,7 @@ from PIL import Image
 # Configuración de la página web
 st.set_page_config(page_title="Control de Muelles - Almacén", page_icon="🚛", layout="centered")
 
-# --- ESTILOS CSS PERSONALIZADOS (FUENTE CORPORATIVA) ---
+# --- ESTILOS CSS PERSONALIZADOS (FUENTE Y DESACTIVAR ZOOM EN LOGO) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
@@ -21,6 +21,11 @@ st.markdown("""
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-weight: 700;
         }
+        
+        /* Desactiva la barra de herramientas y la ampliación al pasar el cursor sobre las imágenes */
+        [data-testid="stImage"] img {
+            pointer-events: none;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -32,7 +37,6 @@ with col_logo:
         logo = Image.open("AZENTIS-SIN-FONDO.png")
         st.image(logo, width=80)
     except Exception:
-        # Fallback por si la imagen no se encuentra en la ruta local
         st.write("") 
 
 with col_titulo:
