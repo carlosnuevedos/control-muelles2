@@ -3,12 +3,11 @@ from datetime import datetime
 import pandas as pd
 import requests
 import time
-from PIL import Image
 
 # Configuración de la página web
 st.set_page_config(page_title="Control de Muelles - Almacén", page_icon="🚛", layout="centered")
 
-# --- ESTILOS CSS PERSONALIZADOS (FUENTE Y DESACTIVAR ZOOM EN LOGO) ---
+# --- ESTILOS CSS PERSONALIZADOS (FUENTE Y LOGO FIJO ESTILO ICONO) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
@@ -22,22 +21,25 @@ st.markdown("""
             font-weight: 700;
         }
         
-        /* Desactiva la barra de herramientas y la ampliación al pasar el cursor sobre las imágenes */
-        [data-testid="stImage"] img {
+        /* Estilo para que el logo actúe como un icono fijo sin interactividad */
+        .logo-icono {
+            width: 75px;
+            height: auto;
             pointer-events: none;
+            user-select: none;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- CABECERA CORPORATIVA CON LOGO Y TÍTULO LIMPIO ---
-col_logo, col_titulo = st.columns([0.18, 0.82])
+# --- CABECERA CORPORATIVA CON LOGO HTML FIJO Y TÍTULO LIMPIO ---
+col_logo, col_titulo = st.columns([0.16, 0.84])
 
 with col_logo:
-    try:
-        logo = Image.open("AZENTIS-SIN-FONDO.png")
-        st.image(logo, width=80)
-    except Exception:
-        st.write("") 
+    # Usamos HTML puro para renderizar la imagen como un icono fijo absoluto
+    st.markdown(
+        '<img src="app/static/AZENTIS-SIN-FONDO.png" class="logo-icono">', 
+        unsafe_allow_html=True
+    )
 
 with col_titulo:
     st.markdown("<h2 style='padding-top: 2px; margin-bottom: 0px;'>Control de Muelles y Cargas</h2>", unsafe_allow_html=True)
