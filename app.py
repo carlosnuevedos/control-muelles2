@@ -7,8 +7,8 @@ from PIL import Image
 import io
 import base64
 
-# --- CONVERSIÓN DEL LOGO A BASE64 PARA HTML INCRUSTADO ---
-def obtener_logo_base64(ruta_imagen):
+# --- FUNCIÓN PARA CONVERTIR IMÁGENES A BASE64 ---
+def convertir_imagen_a_base64(ruta_imagen):
     try:
         with Image.open(ruta_imagen) as img:
             buffered = io.BytesIO()
@@ -17,16 +17,19 @@ def obtener_logo_base64(ruta_imagen):
     except Exception:
         return ""
 
-logo_base64 = obtener_logo_base64("AZENTIS-SIN-FONDO.png")
+# Cargar logo principal y los iconos de las secciones en Base64
+logo_base64 = convertir_imagen_a_base64("AZENTIS-SIN-FONDO.png")
+icono_lanzadera_base64 = convertir_imagen_a_base64("Lanzadera.png")
+icono_clientes_base64 = convertir_imagen_a_base64("Clientes.png")
 
-# Configuración de la página web (Título de la pestaña y favicon corporativo si existe)
+# Configuración de la página web (Título de la pestaña y favicon corporativo)
 st.set_page_config(
     page_title="Control de Muelles - Azentis Persán La Red", 
     page_icon="AZENTIS-SIN-FONDO.png" if logo_base64 else "🚛", 
     layout="centered"
 )
 
-# --- ESTILOS CSS PERSONALIZADOS (FUENTE Y LOGO FIJO ESTILO ICONO) ---
+# --- ESTILOS CSS PERSONALIZADOS ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
@@ -40,10 +43,19 @@ st.markdown("""
             font-weight: 700;
         }
         
-        /* Estilo para que el logo actúe como un icono fijo sin interactividad ni zoom */
+        /* Estilo para que los iconos actúen como elementos fijos sin interactividad */
         .logo-icono {
             width: 75px;
             height: auto;
+            pointer-events: none;
+            user-select: none;
+        }
+        
+        .seccion-icono {
+            width: 32px;
+            height: auto;
+            vertical-align: middle;
+            margin-right: 10px;
             pointer-events: none;
             user-select: none;
         }
@@ -155,7 +167,13 @@ carretilleros_existentes = sorted(carretilleros_existentes)
 # SECCIÓN 1: CONTROL DE LANZADERAS
 # ==============================================================================
 if modo_app == "Control Lanzaderas":
-    st.subheader("🚛 Nuevo Registro de Vehículo (Lanzaderas)")
+    if icono_lanzadera_base64:
+        st.markdown(
+            f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_lanzadera_base64}' class='seccion-icono'> Nuevo Registro de Vehículo (Lanzaderas)</h3>", 
+            unsafe_allow_html=True
+        )
+    else:
+        st.subheader("🚛 Nuevo Registro de Vehículo (Lanzaderas)")
 
     if "modo_mat" not in st.session_state:
         st.session_state.modo_mat = "Seleccionar existente"
@@ -430,7 +448,13 @@ if modo_app == "Control Lanzaderas":
 # SECCIÓN 2: CARGAS DE CLIENTE
 # ==============================================================================
 elif modo_app == "Cargas de Cliente":
-    st.subheader("📦 Nuevo Registro de Carga de Cliente")
+    if icono_clientes_base64:
+        st.markdown(
+            f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_clientes_base64}' class='seccion-icono'> Nuevo Registro de Carga de Cliente</h3>", 
+            unsafe_allow_html=True
+        )
+    else:
+        st.subheader("📦 Nuevo Registro de Carga de Cliente")
 
     col_c1, col_c2 = st.columns(2)
     with col_c1:
