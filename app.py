@@ -265,4 +265,8 @@ if submitted:
                 st.error(f"❌ Error al procesar el guardado: {e}")
 
 st.divider()
-st.subheader("📊 Historial de Registros
+st.subheader("📊 Historial de Registros (Sesión actual)")
+if not st.session_state.df_registros.empty:
+    st.dataframe(st.session_state.df_registros, use_container_width=True)
+else:
+    st.info("Aún no hay registros en esta sesión. ¡Haz el primero arriba!")
