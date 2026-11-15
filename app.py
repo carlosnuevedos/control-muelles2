@@ -116,9 +116,8 @@ with col_titulo:
 
 st.divider()
 
-# --- CONFIGURACIÓN DE URL DE APPS SCRIPT Y GOOGLE SHEETS ---
+# --- CONFIGURACIÓN DE URL DE APPS SCRIPT ---
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyP9cpZSNJdUfEWATW0gIfot-Mg_9_wDy_LZeYY52Ln-kkrWHlQ4PhbLg1iHRcJQncj5Q/exec"
-ENLACE_GOOGLE_SHEET = "https://docs.google.com/spreadsheets/d/1YourSheetIdHere" # Opcional si quieres enlace directo
 
 # Lista base por defecto para carretilleros
 CARRETILLEROS_BASE = [
@@ -141,8 +140,8 @@ COLS_NECESARIAS_CLIENTES = [
     "Carretillero", "Etiquetas", "Turno", "Incidencias"
 ]
 
-# --- FUNCIÓN PARA CARGAR DESDE GOOGLE SHEETS ---
-def cargar_registros_desde_sheets():
+# --- FUNCIONES PARA CARGAR DESDE GOOGLE SHEETS ---
+def cargar_registros_lanzaderas():
     try:
         url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
         response = requests.post(url_fresca, json={"action": "leer"})
@@ -151,7 +150,6 @@ def cargar_registros_desde_sheets():
             if "rows" in data and len(data["rows"]) > 1:
                 rows = data["rows"]
                 data_rows = rows[1:] # Omitir cabecera
-                
                 df = pd.DataFrame(data_rows)
                 if df.shape[1] >= len(COLS_NECESARIAS_LANZADERAS):
                     df = df.iloc[:, :len(COLS_NECESARIAS_LANZADERAS)]
@@ -159,12 +157,32 @@ def cargar_registros_desde_sheets():
                     return df
     except Exception as e:
         pass
-    
     return pd.DataFrame(columns=COLS_NECESARIAS_LANZADERAS)
 
-# Cargar de Google Sheets al iniciar la sesión en memoria
+def cargar_registros_clientes():
+    try:
+        url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
+        response = requests.post(url_fresca, json={"action": "leer_clientes"})
+        if response.status_code == 200:
+            data = response.json()
+            if "rows" in data and len(data["rows"]) > 1:
+                rows = data["rows"]
+                data_rows = rows[1:] # Omitir cabecera
+                df = pd.DataFrame(data_rows)
+                if df.shape[1] >= len(COLS_NECESARIAS_CLIENTES):
+                    df = df.iloc[:, :len(COLS_NECESARIAS_CLIENTES)]
+                    df.columns = COLS_NECESARIAS_CLIENTES
+                    return df
+    except Exception as e:
+        pass
+    return pd.DataFrame(columns=COLS_NECESARIAS_CLIENTES)
+
+# Cargar en memoria al iniciar la sesión
 if "df_registros" not in st.session_state:
-    st.session_state.df_registros = cargar_registros_desde_sheets()
+    st.session_state.df_registros = cargar_registros_lanzaderas()
+
+if "df_clientes" not in st.session_state:
+    st.session_state.df_clientes = cargar_registros_clientes()
 
 # Calcular fecha actual ajustada a España
 zona_espana = timezone(timedelta(hours=1))
@@ -193,13 +211,14 @@ st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
 st.sidebar.title("Navegación")
 modo_app = st.sidebar.radio("Selecciona el apartado:", ["Control Lanzaderas", "Cargas de Cliente"])
 
-# Gestión dinámica de carretilleros
+# Gestión dinámica de carretilleros (basada en ambas tablas o base)
 carretilleros_existentes = list(CARRETILLEROS_BASE)
-if not st.session_state.df_registros.empty and len(st.session_state.df_registros.columns) > 11:
-    col_carretilleros_historico = st.session_state.df_registros.iloc[:, 11].dropna().astype(str).str.strip().unique().tolist()
-    for c in col_carretilleros_historico:
-        if c and c not in carretilleros_existentes:
-            carretilleros_existentes.append(c)
+for df_temp in [st.session_state.df_registros, st.session_state.df_clientes]:
+    if not df_temp.empty and len(df_temp.columns) > 8:
+        col_carrs = df_temp.iloc[:, 8 if df_temp is st.session_state.df_clientes else 11].dropna().astype(str).str.strip().unique().tolist()
+        for c in col_carrs:
+            if c and c not in carretilleros_existentes:
+                carretilleros_existentes.append(c)
 
 if "carretilleros_extra" not in st.session_state:
     st.session_state.carretilleros_extra = []
@@ -417,7 +436,7 @@ if modo_app == "Control Lanzaderas":
         with cf_h:
             c_fin_h = st.selectbox("Hora Fin (Carga)", lista_horas, index=c_inicio_h + 1 if c_inicio_h < 23 else 23, key="cf_h")
         with cf_fm:
-            c_fin_m = st.selectbox("Minutos Fin (Carga)", lista_minutos, index=0, key="cf_m")
+            c_fin_m = st.selectbox("Minutos Fin (Carga)", lista_minutos, index=0, key="cf_fm")
 
         t_lleg_c = (c_llegada_h * 60) + c_llegada_m
         t_ini_c = (c_inicio_h * 60) + c_inicio_m
@@ -483,7 +502,7 @@ if modo_app == "Control Lanzaderas":
                         
                         for c in ["input_nueva_mat_lanz", "alb_desc", "input_albaran_lanz", "input_albaran_custom", "chk_descarga", "chk_carga", "incidencias_input_lanz"]:
                             if c in st.session_state: del st.session_state[c]
-                        st.session_state.df_registros = cargar_registros_desde_sheets()
+                        st.session_state.df_registros = cargar_registros_lanzaderas()
                         
                         st.query_params["recarga"] = str(time.time())
                         time.sleep(0.5)
@@ -496,7 +515,6 @@ if modo_app == "Control Lanzaderas":
     st.divider()
     st.subheader("📊 Últimos 5 Registros (Lanzaderas)")
     if not st.session_state.df_registros.empty:
-        # Mostrar solo los últimos 5 registros
         st.dataframe(st.session_state.df_registros.tail(5), use_container_width=True)
     else:
         st.info("Aún no hay registros.")
@@ -600,6 +618,9 @@ elif modo_app == "Cargas de Cliente":
                             if clave in st.session_state:
                                 del st.session_state[clave]
 
+                        # Actualizar estado de clientes tras guardar
+                        st.session_state.df_clientes = cargar_registros_clientes()
+
                         st.query_params["recarga"] = str(time.time())
                         time.sleep(0.5)
                         st.rerun()
@@ -610,11 +631,7 @@ elif modo_app == "Cargas de Cliente":
 
     st.divider()
     st.subheader("📊 Últimos 5 Registros (Cargas de Cliente)")
-    
-    # Para la sección de clientes, cargamos también los datos específicos desde la pestaña si se desea, 
-    # o mostramos un resumen del historial en memoria filtrado o actualizado.
-    # Aquí puedes enlazar o mostrar los últimos registros de cliente disponibles en memoria o hacer una lectura rápida.
-    if not st.session_state.df_registros.empty:
-        st.dataframe(st.session_state.df_registros.tail(5), use_container_width=True)
+    if not st.session_state.df_clientes.empty:
+        st.dataframe(st.session_state.df_clientes.tail(5), use_container_width=True)
     else:
-        st.info("Aún no hay registros de cliente en memoria.")
+        st.info("Aún no hay registros de cliente.")
