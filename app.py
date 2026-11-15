@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import pandas as pd
 import requests
 import time
@@ -29,7 +29,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- ESTILOS CSS PERSONALIZADOS ---
+# --- ESTILOS CSS PERSONALIZADOS (INCLUYENDO BOTÓN FLOTANTE) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
@@ -59,8 +59,40 @@ st.markdown("""
             pointer-events: none;
             user-select: none;
         }
+
+        /* --- ESTILO DEL BOTÓN FLOTANTE PARA SUBIR ARRIBA --- */
+        .btn-flotante-arriba {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background-color: #000000;
+            color: white !important;
+            padding: 12px 16px;
+            border-radius: 50px;
+            text-align: center;
+            box-shadow: 0px 4px 12px rgba(0,0,0,0.3);
+            z-index: 99999;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .btn-flotante-arriba:hover {
+            background-color: #333333;
+            transform: scale(1.05);
+            color: white !important;
+        }
     </style>
 """, unsafe_allow_html=True)
+
+# --- BOTÓN FLOTANTE HTML INYECTADO EN LA PÁGINA ---
+st.markdown(
+    '<a href="#top-section" class="btn-flotante-arriba" title="Volver arriba">⬆️ Subir</a>',
+    unsafe_allow_html=True
+)
 
 # --- CABECERA CORPORATIVA CON LOGO HTML FIJO Y TÍTULO LIMPIO ---
 col_logo, col_titulo = st.columns([0.16, 0.84])
@@ -76,7 +108,7 @@ with col_logo:
 
 with col_titulo:
     st.markdown("<h2 style='padding-top: 2px; margin-bottom: 0px;'>Control de Muelles y Cargas</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #555555; font-weight: 500; margin-top: 2px;'>Azentis Persán La Red • Conectado a Google Sheets</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #555555; font-weight: 500; margin-top: 2px;'>Azentis Persán La Red • Conectado à Google Sheets</p>", unsafe_allow_html=True)
 
 st.divider()
 
@@ -121,6 +153,10 @@ def cargar_registros_desde_sheets():
 # Cargar de Google Sheets al iniciar la sesión en memoria
 if "df_registros" not in st.session_state:
     st.session_state.df_registros = cargar_registros_desde_sheets()
+
+# Calcular fecha actual ajustada a España (CET/CEST - UTC+1 / UTC+2) para evitar desfases con el servidor
+zona_espana = timezone(timedelta(hours=1)) # Ajustable según horario de verano/invierno, o datetime.now() local
+fecha_hoy_local = datetime.now(zona_espana).date() if hasattr(datetime, 'now') else datetime.now().date()
 
 # Función para calcular el turno según la hora y minuto de INICIO
 def calcular_turno(hora, minuto):
@@ -187,7 +223,7 @@ if modo_app == "Control Lanzaderas":
     col_f1, col_f2 = st.columns(2)
 
     with col_f1:
-        fecha_registro = st.date_input("Fecha del Registro", value=datetime.now(), key="f_lanz")
+        fecha_registro = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_lanz")
 
     with col_f2:
         st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 6px; color: inherit;">Carretillero</p>', unsafe_allow_html=True)
@@ -433,12 +469,10 @@ if modo_app == "Control Lanzaderas":
                         st.success(f"✅ ¡Guardado en Google Sheets para **{matricula.upper()}**!")
                         st.balloons()
                         
-                        # Borrar claves del estado para restablecer formulario
                         for c in ["input_nueva_mat_lanz", "alb_desc", "input_albaran_lanz", "input_albaran_custom", "chk_descarga", "chk_carga", "incidencias_input_lanz"]:
                             if c in st.session_state: del st.session_state[c]
                         st.session_state.df_registros = cargar_registros_desde_sheets()
                         
-                        # TRUCO DEFINITIVO: Cambiar query_params para obligar al navegador a subir arriba al recargar
                         st.query_params["recarga"] = str(time.time())
                         time.sleep(0.5)
                         st.rerun()
@@ -469,7 +503,7 @@ elif modo_app == "Cargas de Cliente":
 
     col_c1, col_c2 = st.columns(2)
     with col_c1:
-        fecha_cliente = st.date_input("Fecha del Registro", value=datetime.now(), key="f_cli")
+        fecha_cliente = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_cli")
         transporte = st.text_input("Número de Transporte", placeholder="Ej: TR-98765", key="num_transporte")
 
     with col_c2:
@@ -528,7 +562,7 @@ elif modo_app == "Cargas de Cliente":
                     turno_calc_cli = calcular_turno(ci_h, ci_m)
                     
                     fila_cliente = [[
-                        fecha_cliente.strftime("%Y-%m-%d"),
+                        fecha_cliente.strftime("%Y-%m-d"),
                         transporte.strip().upper(),
                         f"{ph_h:02d}:{ph_m:02d}",
                         f"{ci_h:02d}:{ci_m:02d}",
@@ -553,7 +587,6 @@ elif modo_app == "Cargas de Cliente":
                             if clave in st.session_state:
                                 del st.session_state[clave]
 
-                        # TRUCO DEFINITIVO: Cambiar query_params para obligar al navegador a subir arriba al recargar
                         st.query_params["recarga"] = str(time.time())
                         time.sleep(0.5)
                         st.rerun()
