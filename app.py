@@ -389,4 +389,82 @@ elif modo_app == "Cargas de Cliente":
         st.markdown("**Carretillero**")
         carretillero_cli = st.selectbox("Carretillero (Cliente)", carretilleros_existentes, label_visibility="collapsed", key="sel_carr_cli")
         
-        num_pallets_cli = st.
+        num_pallets_cli = st.number_input("Número de Pallets", min_value=1, max_value=200, value=33, key="pallets_cli")
+
+    st.markdown("#### Horarios y Control")
+    
+    col_h1, col_h2, col_h3 = st.columns(3)
+    with col_h1:
+        st.write("**Hora Picada:**")
+        ph_h = st.selectbox("Hora Picada", lista_horas, index=8, key="ph_h")
+        ph_m = st.selectbox("Minutos Picada", lista_minutos, index=0, key="ph_m")
+    with col_h2:
+        st.write("**Hora Comienzo:**")
+        ci_h = st.selectbox("Hora Comienzo", lista_horas, index=8, key="ci_cli_h")
+        ci_m = st.selectbox("Minutos Comienzo", lista_minutos, index=0, key="ci_cli_m")
+    with col_h3:
+        st.write("**Hora Fin:**")
+        cf_h = st.selectbox("Hora Fin", lista_horas, index=9, key="cf_cli_h")
+        cf_m = st.selectbox("Minutos Fin", lista_minutos, index=0, key="cf_m")
+
+    # Opción de etiquetas ("Sí", "No" o en blanco)
+    opcion_etiquetas = st.selectbox("¿Lleva etiquetas?", ["", "Sí", "No"], key="opt_etiquetas")
+
+    incidencias_cli = st.text_area("Incidencias (opcional)", placeholder="Ej: Falta de stock, retraso...", key="inc_cli")
+
+    submitted_cli = st.button("Guardar Carga de Cliente")
+
+    if submitted_cli:
+        if not transporte:
+            st.error("Por favor, introduce el número de transporte.")
+        else:
+            t_picada = (ph_h * 60) + ph_m
+            t_comienzo = (ci_h * 60) + ci_m
+            t_fin = (cf_h * 60) + cf_m
+
+            if t_comienzo < t_picada or t_fin < t_comienzo:
+                st.error("⚠️ Incongruencia horaria: La hora picada debe ser anterior al comienzo, y el comienzo anterior al fin.")
+            else:
+                try:
+                    # Columna F: Minutos de Operación (desde comienzo hasta fin)
+                    min_operacion = t_fin - t_comienzo
+                    
+                    # Columna G: Minutos de espera totales (desde picada hasta fin de carga)
+                    min_espera_totales = t_fin - t_picada
+
+                    # Cálculo automático del turno según la Hora de Comienzo
+                    turno_calc_cli = calcular_turno(ci_h, ci_m)
+                    
+                    fila_cliente = [[
+                        fecha_cliente.strftime("%Y-%m-%d"),
+                        transporte.strip().upper(),
+                        f"{ph_h:02d}:{ph_m:02d}",
+                        f"{ci_h:02d}:{ci_m:02d}",
+                        f"{cf_h:02d}:{cf_m:02d}",
+                        int(min_operacion),       # Columna F: Minutos Operación
+                        int(min_espera_totales),  # Columna G: Minutos de espera totales
+                        int(num_pallets_cli),     # Columna H
+                        carretillero_cli,         # Columna I
+                        opcion_etiquetas,         # Columna J
+                        turno_calc_cli,           # Columna K: Turno automático
+                        incidencias_cli.strip() if incidencias_cli else "" # Columna L: Incidencias
+                    ]]
+
+                    response = requests.post(WEB_APP_URL, json={"action": "update_cliente", "rows": fila_cliente})
+                    
+                    if response.status_code == 200:
+                        st.success(f"✅ ¡Carga de cliente **{transporte.upper()}** guardada en la pestaña 'Cargas de cliente'!")
+                        st.balloons()
+                        
+                        claves_cli_a_borrar = ["num_transporte", "inc_cli", "opt_etiquetas"]
+                        for clave in claves_cli_a_borrar:
+                            if clave in st.session_state:
+                                del st.session_state[clave]
+
+                        st.markdown("<script>window.location.hash = '#top-section';</script>", unsafe_allow_html=True)
+                        time.sleep(1.2)
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Error al conectar con Google Sheets: {response.text}")
+                except Exception as e:
+                    st.error(f"❌ Error al procesar: {e}")
