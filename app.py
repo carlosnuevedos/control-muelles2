@@ -3,9 +3,28 @@ from datetime import datetime
 import pandas as pd
 import requests
 import time
+from PIL import Image
+import io
+import base64
 
-# Configuración de la página web
-st.set_page_config(page_title="Control de Muelles - Almacén", page_icon="🚛", layout="centered")
+# --- CONVERSIÓN DEL LOGO A BASE64 PARA HTML INCRUSTADO ---
+def obtener_logo_base64(ruta_imagen):
+    try:
+        with Image.open(ruta_imagen) as img:
+            buffered = io.BytesIO()
+            img.save(buffered, format="PNG")
+            return base64.b64encode(buffered.getvalue()).decode()
+    except Exception:
+        return ""
+
+logo_base64 = obtener_logo_base64("AZENTIS-SIN-FONDO.png")
+
+# Configuración de la página web (Título de la pestaña y favicon corporativo si existe)
+st.set_page_config(
+    page_title="Control de Muelles - Azentis Persán La Red", 
+    page_icon="AZENTIS-SIN-FONDO.png" if logo_base64 else "🚛", 
+    layout="centered"
+)
 
 # --- ESTILOS CSS PERSONALIZADOS (FUENTE Y LOGO FIJO ESTILO ICONO) ---
 st.markdown("""
@@ -21,7 +40,7 @@ st.markdown("""
             font-weight: 700;
         }
         
-        /* Estilo para que el logo actúe como un icono fijo sin interactividad */
+        /* Estilo para que el logo actúe como un icono fijo sin interactividad ni zoom */
         .logo-icono {
             width: 75px;
             height: auto;
@@ -35,11 +54,13 @@ st.markdown("""
 col_logo, col_titulo = st.columns([0.16, 0.84])
 
 with col_logo:
-    # Usamos HTML puro para renderizar la imagen como un icono fijo absoluto
-    st.markdown(
-        '<img src="app/static/AZENTIS-SIN-FONDO.png" class="logo-icono">', 
-        unsafe_allow_html=True
-    )
+    if logo_base64:
+        st.markdown(
+            f'<img src="data:image/png;base64,{logo_base64}" class="logo-icono">', 
+            unsafe_allow_html=True
+        )
+    else:
+        st.write("🚛")
 
 with col_titulo:
     st.markdown("<h2 style='padding-top: 2px; margin-bottom: 0px;'>Control de Muelles y Cargas</h2>", unsafe_allow_html=True)
