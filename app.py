@@ -13,7 +13,7 @@ st.write("Conectado a Google Sheets mediante Google Apps Script.")
 # --- CONFIGURACIÓN DE URL DE APPS SCRIPT ACTUALIZADA ---
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyP9cpZSNJdUfEWATW0gIfot-Mg_9_wDy_LZeYY52Ln-kkrWHlQ4PhbLg1iHRcJQncj5Q/exec"
 
-# Lista base por defecto (por si el Google Sheet está vacío al principio)
+# Lista base por defecto para carretilleros
 CARRETILLEROS_BASE = [
     "C. Alías", "C. Díaz", "M. José", "David", "Andreu", 
     "Raúl", "Álvaro", "Daniel", "J. A. Lara", "J. A. Vega", "Sergio", "Samuel"
@@ -71,13 +71,18 @@ st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
 
 st.subheader("Nuevo Registro de Vehículo")
 
-# 1. Fecha y Carretillero
-col_f1, col_f2 = st.columns(2)
-with col_f1:
-    fecha_registro = st.date_input("Fecha del Registro", value=datetime.now())
+# Inicializar estados de modo si no existen
+if "modo_mat" not in st.session_state:
+    st.session_state.modo_mat = "Seleccionar existente"
+if "modo_carr" not in st.session_state:
+    st.session_state.modo_carr = "Seleccionar existente"
 
-# --- GESTIÓN DINÁMICA DE CARRETILLEROS ---
-# Unimos la lista base con los carretilleros que ya existan en Google Sheets (Columna de carretillero = índice 11)
+# Extraer matrículas existentes desde la Columna B (índice 1)
+matriculas_guardadas = []
+if not st.session_state.df_registros.empty:
+    matriculas_guardadas = sorted(st.session_state.df_registros.iloc[:, 1].dropna().astype(str).str.strip().unique().tolist())
+
+# Gestión dinámica de carretilleros
 carretilleros_existentes = list(CARRETILLEROS_BASE)
 if not st.session_state.df_registros.empty and len(st.session_state.df_registros.columns) > 11:
     col_carretilleros_historico = st.session_state.df_registros.iloc[:, 11].dropna().astype(str).str.strip().unique().tolist()
@@ -85,7 +90,6 @@ if not st.session_state.df_registros.empty and len(st.session_state.df_registros
         if c and c not in carretilleros_existentes:
             carretilleros_existentes.append(c)
 
-# Añadimos también los nuevos que se hayan agregado en la sesión actual si los hay
 if "carretilleros_extra" not in st.session_state:
     st.session_state.carretilleros_extra = []
 
@@ -95,23 +99,47 @@ for c in st.session_state.carretilleros_extra:
 
 carretilleros_existentes = sorted(carretilleros_existentes)
 
-with col_f2:
-    modo_carretillero = st.radio(
-        "Modo Carretillero", 
-        ["Seleccionar existente", "➕ Añadir nuevo"], 
+# --- DISEÑO EN 2 COLUMNAS ALINEADAS ---
+col_f1, col_f2 = st.columns(2)
+
+with col_f1:
+    fecha_registro = st.date_input("Fecha del Registro", value=datetime.now())
+    
+    st.markdown("##### Matrícula del Vehículo")
+    # 1. Cuadrícula arriba
+    if st.session_state.modo_mat == "Seleccionar existente":
+        if matriculas_guardadas:
+            matricula = st.selectbox("Matrícula", matriculas_guardadas, label_visibility="collapsed", key="select_mat_existente")
+        else:
+            st.info("No hay matrículas guardadas.")
+            matricula = ""
+    else:
+        matricula = st.text_input("Escribe la nueva matrícula", placeholder="Ej: 1234ABC", label_visibility="collapsed", key="input_nueva_mat").strip().upper()
+
+    # 2. Botones de selección justo debajo
+    nuevo_modo_mat = st.radio(
+        "Modo Matrícula", 
+        ["Seleccionar existente", "Escribir nueva"], 
+        index=0 if st.session_state.modo_mat == "Seleccionar existente" else 1,
         horizontal=True, 
         label_visibility="collapsed",
-        key="tipo_radio_carretillero"
+        key="radio_modo_mat"
     )
-    
-    if modo_carretillero == "Seleccionar existente":
-        carretillero = st.selectbox("Carretillero", carretilleros_existentes, key="select_carretillero_existente")
+    if nuevo_modo_mat != st.session_state.modo_mat:
+        st.session_state.modo_mat = nuevo_modo_mat
+        st.rerun()
+
+with col_f2:
+    st.write("") # Espaciador superior invisible para alinear perfectamente con la fecha
+    st.markdown("##### Carretillero")
+    # 1. Cuadrícula arriba
+    if st.session_state.modo_carr == "Seleccionar existente":
+        carretillero = st.selectbox("Carretillero", carretilleros_existentes, label_visibility="collapsed", key="select_carretillero_existente")
     else:
-        col_nc1, col_nc2 = st.columns([0.7, 0.3])
+        col_nc1, col_nc2 = st.columns([0.75, 0.25])
         with col_nc1:
-            nuevo_carr = st.text_input("Nombre del nuevo carretillero", key="input_nuevo_carr", placeholder="Ej: J. Pérez").strip()
+            nuevo_carr = st.text_input("Nombre del nuevo carretillero", placeholder="Ej: J. Pérez", label_visibility="collapsed", key="input_nuevo_carr").strip()
         with col_nc2:
-            st.write("") # Espaciador vertical visual
             btn_add_carr = st.button("Añadir", key="btn_guardar_nuevo_carr")
         
         if btn_add_carr:
@@ -119,36 +147,25 @@ with col_f2:
                 if nuevo_carr not in st.session_state.carretilleros_extra:
                     st.session_state.carretilleros_extra.append(nuevo_carr)
                 st.success(f"¡'{nuevo_carr}' añadido!")
+                st.session_state.modo_carr = "Seleccionar existente"
                 st.rerun()
             else:
-                st.warning("Escribe un nombre válido.")
+                st.warning("Escribe un nombre.")
         
         carretillero = nuevo_carr if nuevo_carr else (carretilleros_existentes[0] if carretilleros_existentes else "")
 
-# Extraer matrículas existentes desde la Columna B (índice 1)
-matriculas_guardadas = []
-if not st.session_state.df_registros.empty:
-    matriculas_guardadas = sorted(st.session_state.df_registros.iloc[:, 1].dropna().astype(str).str.strip().unique().tolist())
-
-st.write("") # Separador
-col_m1, col_m2 = st.columns(2)
-with col_m1:
-    tipo_ingreso_mat = st.radio(
-        "Matrícula:", 
-        ["Seleccionar existente", "Escribir nueva"], 
+    # 2. Botones de selección justo debajo
+    nuevo_modo_carr = st.radio(
+        "Modo Carretillero", 
+        ["Seleccionar existente", "➕ Añadir nuevo"], 
+        index=0 if st.session_state.modo_carr == "Seleccionar existente" else 1,
         horizontal=True, 
         label_visibility="collapsed",
-        key="tipo_radio_mat"
+        key="radio_modo_carr"
     )
-    
-    if tipo_ingreso_mat == "Seleccionar existente":
-        if matriculas_guardadas:
-            matricula = st.selectbox("Matrícula del Vehículo", matriculas_guardadas, key="select_mat_existente")
-        else:
-            st.info("No hay matrículas guardadas aún.")
-            matricula = ""
-    else:
-        matricula = st.text_input("Escribe la nueva matrícula", key="input_nueva_mat").strip().upper()
+    if nuevo_modo_carr != st.session_state.modo_carr:
+        st.session_state.modo_carr = nuevo_modo_carr
+        st.rerun()
 
 st.divider()
 
@@ -372,7 +389,7 @@ if submitted:
                         texto_incidencias
                     ])
 
-                # 1. Enviar a Google Sheets vía Web App
+                # Enviar a Google Sheets vía Web App
                 response = requests.post(WEB_APP_URL, json={"action": "update", "rows": nuevos_datos})
                 
                 if response.status_code == 200:
