@@ -27,13 +27,6 @@ COLS_NECESARIAS_LANZADERAS = [
     "Pallets", "Carretillero", "Turno", "Incidencias"
 ]
 
-# Columnas oficiales para Cargas de Cliente
-COLS_NECESARIAS_CLIENTES = [
-    "Fecha Registro", "Transporte", "Hora Picada", "Hora comienzo", 
-    "Hora Fin", "Minutos Totales Espera", "Número Pallets", 
-    "Carretillero", "¿Etiquetas?", "Incidencias"
-]
-
 # --- FUNCIÓN PARA CARGAR DESDE GOOGLE SHEETS ---
 def cargar_registros_desde_sheets():
     try:
@@ -363,6 +356,8 @@ if modo_app == "Control Lanzaderas":
                         for c in ["input_nueva_mat_lanz", "alb_desc", "alb_lanzadera", "alb_custom", "chk_descarga", "chk_carga", "incidencias_input_lanz"]:
                             if c in st.session_state: del st.session_state[c]
                         st.session_state.df_registros = cargar_registros_desde_sheets()
+                        
+                        st.markdown("<script>window.location.hash = '#top-section';</script>", unsafe_allow_html=True)
                         time.sleep(1.2)
                         st.rerun()
                     else:
@@ -431,8 +426,11 @@ elif modo_app == "Cargas de Cliente":
                 st.error("⚠️ Incongruencia horaria: La hora picada debe ser anterior al comienzo, y el comienzo anterior al fin.")
             else:
                 try:
-                    # Minutos totales de espera (desde la picada hasta el comienzo de la operación)
-                    min_espera_totales = t_comienzo - t_picada
+                    # Columna F: Minutos de Operación (desde comienzo hasta fin)
+                    min_operacion = t_fin - t_comienzo
+                    
+                    # Columna G: Minutos de espera totales (desde picada hasta fin de carga)
+                    min_espera_totales = t_fin - t_picada
                     
                     fila_cliente = [[
                         fecha_cliente.strftime("%Y-%m-%d"),
@@ -440,7 +438,8 @@ elif modo_app == "Cargas de Cliente":
                         f"{ph_h:02d}:{ph_m:02d}",
                         f"{ci_h:02d}:{ci_m:02d}",
                         f"{cf_h:02d}:{cf_m:02d}",
-                        int(min_espera_totales),
+                        int(min_operacion),       # Columna F: Minutos Operación
+                        int(min_espera_totales),  # Columna G: Minutos de espera totales
                         int(num_pallets_cli),
                         carretillero_cli,
                         opcion_etiquetas,
@@ -452,6 +451,14 @@ elif modo_app == "Cargas de Cliente":
                     if response.status_code == 200:
                         st.success(f"✅ ¡Carga de cliente **{transporte.upper()}** guardada en la pestaña 'Cargas de cliente'!")
                         st.balloons()
+                        
+                        # Limpiar campos específicos de cliente de la sesión
+                        claves_cli_a_borrar = ["num_transporte", "inc_cli", "opt_etiquetas"]
+                        for clave in claves_cli_a_borrar:
+                            if clave in st.session_state:
+                                del st.session_state[clave]
+
+                        st.markdown("<script>window.location.hash = '#top-section';</script>", unsafe_allow_html=True)
                         time.sleep(1.2)
                         st.rerun()
                     else:
