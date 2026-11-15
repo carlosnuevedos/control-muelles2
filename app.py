@@ -10,7 +10,7 @@ st.set_page_config(page_title="Control de Muelles - Almacén", page_icon="🚛",
 st.title("🚛 Registro de Carga y Descarga en Muelle (Online)")
 st.write("Conectado a Google Sheets mediante Google Apps Script.")
 
-# --- CONFIGURACIÓN DE URL DE APPS SCRIPT ---
+# --- CONFIGURACIÓN DE URL DE APPS SCRIPT (Actualizada) ---
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw9oPFCuuCOcMTIpbIQZipYlpmyrWtfSmjKQdpae3beI3D9Pp-iZTbMfRypXtzXAtOSNQ/exec"
 
 # Lista de carretilleros disponibles
@@ -38,7 +38,6 @@ def cargar_registros_desde_sheets():
                 header = rows[0]
                 data_rows = rows[1:]
                 df = pd.DataFrame(data_rows, columns=header)
-                # Asegurar que tenga exactamente las columnas necesarias
                 if len(df.columns) == len(COLS_NECESARIAS):
                     df.columns = COLS_NECESARIAS
                 return df
@@ -161,11 +160,9 @@ if activar_carga:
     if tipo_lanzadera in ["P (Lanzadera)", "M (Lanzadera)"]:
         letra_prefijo = "P" if tipo_lanzadera.startswith("P") else "M"
         
-        # Calcular número secuencial robusto leyendo del DataFrame cargado
         siguiente_num = 1
         if not df_actual.empty and "Fecha Registro" in df_actual.columns and "Albarán" in df_actual.columns:
             fecha_str_buscada = fecha_registro.strftime("%Y-%m-%d")
-            # Normalizar fechas a string para comparar sin errores de tipo
             df_actual["Fecha_str"] = df_actual["Fecha Registro"].astype(str).str.slice(0, 10)
             
             filtro_fecha = df_actual["Fecha_str"] == fecha_str_buscada
@@ -301,6 +298,32 @@ if submitted:
                 response = requests.post(WEB_APP_URL, json={"action": "update", "rows": nuevos_datos})
                 
                 if response.status_code == 200:
-                    # Actualizar memoria local
-                    df_nuevo = pd.DataFrame(nuevos_datos, columns=COLS_NECESARIAS)
-                    st.session_state.df_registros
+                    st.success(f"✅ ¡Guardado y sincronizado en Google Sheets para **{matricula.upper()}**!")
+                    st.balloons()
+                    
+                    # Limpiar claves de sesión para reiniciar campos
+                    claves_a_borrar = [
+                        "input_nueva_mat", "alb_desc", "alb_lanzadera", "alb_custom", 
+                        "chk_descarga", "chk_carga", "incidencias_input"
+                    ]
+                    for clave in claves_a_borrar:
+                        if clave in st.session_state:
+                            del st.session_state[clave]
+                    
+                    # Recargar datos frescos de Google Sheets
+                    st.session_state.df_registros = cargar_registros_desde_sheets()
+                    
+                    time.sleep(1.2)
+                    st.rerun()
+                else:
+                    st.error(f"❌ Error al conectar con Google Sheets (Código {response.status_code}): {response.text}")
+                
+            except Exception as e:
+                st.error(f"❌ Error al procesar el guardado: {e}")
+
+st.divider()
+st.subheader("📊 Historial de Registros (Cargados desde Google Sheets)")
+if not st.session_state.df_registros.empty:
+    st.dataframe(st.session_state.df_registros, use_container_width=True)
+else:
+    st.info("Aún no hay registros en la hoja de cálculo.")
