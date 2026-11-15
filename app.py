@@ -45,6 +45,9 @@ def calcular_turno(hora, minuto):
 lista_horas = list(range(0, 24))
 lista_minutos = list(range(0, 60, 5))
 
+# Ancla invisible arriba del todo para que la app vuelva al inicio al recargar
+st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
+
 st.subheader("Nuevo Registro de Vehículo")
 
 # 1. Fecha, Matrícula y Carretillero
@@ -127,19 +130,16 @@ c_llegada_m = 0
 if activar_carga:
     st.markdown("#### Tiempos y Referencia de Carga (Lanzadera)")
     
-    # Selector de tipo de carga (P, M o Personalizado)
     col_tc1, col_tc2, col_tc3 = st.columns(3)
     with col_tc1:
         tipo_lanzadera = st.selectbox("Tipo de Referencia", ["P (Lanzadera)", "M (Lanzadera)", "Albarán Personalizado"], key="tipo_lanz")
     
-    # Generador automático de formato PDDMMAA-X o MDDMMAA-X
     str_fecha_ddmmaa = fecha_registro.strftime("%d%m%y")
     df_actual = st.session_state.df_registros
     
     if tipo_lanzadera in ["P (Lanzadera)", "M (Lanzadera)"]:
         letra_prefijo = "P" if tipo_lanzadera.startswith("P") else "M"
         
-        # Calcular el número secuencial diario basado en lo registrado en la sesión para esa fecha y tipo
         siguiente_num = 1
         if not df_actual.empty and "Fecha Registro" in df_actual.columns and "Albarán" in df_actual.columns:
             filtro_fecha = df_actual["Fecha Registro"] == fecha_registro.strftime("%Y-%m-%d")
@@ -284,7 +284,18 @@ if submitted:
                     
                     st.success(f"✅ ¡Guardado y sincronizado en Google Sheets para **{matricula.upper()}**! (Carretillero: {carretillero} | Turno: {turno_calc})")
                     st.balloons()
-                    time.sleep(2)
+                    
+                    # 3. Forzar scroll arriba del todo mediante JavaScript y recargar limpio
+                    st.markdown("""
+                        <script>
+                            const mediaQuery = window.parent.document.querySelector('.main');
+                            if (mediaQuery) {
+                                mediaQuery.scrollTo({top: 0, behavior: 'smooth'});
+                            }
+                        </script>
+                    """, unsafe_allow_html=True)
+                    
+                    time.sleep(1.5)
                     st.rerun()
                 else:
                     st.error(f"❌ Error al conectar con Google Sheets (Código {response.status_code}): {response.text}")
