@@ -383,22 +383,35 @@ elif modo_app == "Cargas de Cliente":
         st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 6px; color: inherit;">Carretillero</p>', unsafe_allow_html=True)
         carretillero_cli = st.selectbox("Carretillero (Cliente)", carretilleros_existentes, label_visibility="collapsed", key="sel_carr_cli")
         
-        num_pallets_cli = st.number_input("Número de Pallets", min_value=1, max_value=200, value=33, key="pallets_cli")
+        # Selector de Pallets con las opciones solicitadas en orden
+        opcion_pallets_cli = st.selectbox("Número de Pallets", ["33", "26", "24", "21", "50", "Otra cantidad"], key="opt_p_cli")
+        if opcion_pallets_cli == "Otra cantidad":
+            num_pallets_cli = st.number_input("Especifica número de pallets", min_value=1, max_value=200, value=33, key="p_cli_otro")
+        else:
+            num_pallets_cli = int(opcion_pallets_cli)
 
     st.markdown("#### Horarios y Control")
     
-    col_h1, col_h2, col_h3 = st.columns(3)
-    with col_h1:
-        st.write("**Hora Picada:**")
+    # Horarios organizados de forma horizontal en columnas (igual que Lanzaderas)
+    st.write("**Hora Picada:**")
+    c_ph1, c_ph2 = st.columns(2)
+    with c_ph1:
         ph_h = st.selectbox("Hora Picada", lista_horas, index=8, key="ph_h")
+    with c_ph2:
         ph_m = st.selectbox("Minutos Picada", lista_minutos, index=0, key="ph_m")
-    with col_h2:
-        st.write("**Hora Comienzo:**")
+
+    st.write("**Hora Comienzo:**")
+    c_ci1, c_ci2 = st.columns(2)
+    with c_ci1:
         ci_h = st.selectbox("Hora Comienzo", lista_horas, index=8, key="ci_cli_h")
+    with c_ci2:
         ci_m = st.selectbox("Minutos Comienzo", lista_minutos, index=0, key="ci_cli_m")
-    with col_h3:
-        st.write("**Hora Fin:**")
+
+    st.write("**Hora Fin:**")
+    c_cf1, c_cf2 = st.columns(2)
+    with c_cf1:
         cf_h = st.selectbox("Hora Fin", lista_horas, index=9, key="cf_cli_h")
+    with c_cf2:
         cf_m = st.selectbox("Minutos Fin", lista_minutos, index=0, key="cf_m")
 
     # Opción de etiquetas ("Sí", "No" o en blanco)
@@ -445,7 +458,7 @@ elif modo_app == "Cargas de Cliente":
                         st.success(f"✅ ¡Carga de cliente **{transporte.upper()}** guardada en la pestaña 'Cargas de cliente'!")
                         st.balloons()
                         
-                        claves_cli_a_borrar = ["num_transporte", "inc_cli", "opt_etiquetas"]
+                        claves_cli_a_borrar = ["num_transporte", "inc_cli", "opt_etiquetas", "p_cli_otro"]
                         for clave in claves_cli_a_borrar:
                             if clave in st.session_state:
                                 del st.session_state[clave]
