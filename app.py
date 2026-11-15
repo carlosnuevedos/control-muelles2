@@ -27,7 +27,7 @@ COLS_NECESARIAS = [
     "Pallets", "Carretillero", "Turno", "Incidencias"
 ]
 
-# Inicializar historial en memoria de la sesión (sin archivos Excel locales)
+# Inicializar historial en memoria de la sesión
 if "df_registros" not in st.session_state:
     st.session_state.df_registros = pd.DataFrame(columns=COLS_NECESARIAS)
 
@@ -72,7 +72,7 @@ st.divider()
 activar_descarga = st.checkbox("📥 Registrar DESCARGA de mercancía")
 
 albaran_descarga = ""
-pallets_descarga = 1
+pallets_descarga = 33
 d_llegada_h = d_llegada_m = d_inicio_h = d_inicio_m = d_fin_h = d_fin_m = 8
 
 if activar_descarga:
@@ -83,7 +83,7 @@ if activar_descarga:
     with col_d2:
         opcion_pallets_d = st.selectbox("Pallets Descargados", ["33", "26", "Otra cantidad"], key="opt_p_desc")
         if opcion_pallets_d == "Otra cantidad":
-            pallets_descarga = st.number_input("Especifica cantidad de pallets", min_value=1, max_value=200, value=1, key="p_desc_otro")
+            pallets_descarga = st.number_input("Especifica cantidad de pallets", min_value=1, max_value=200, value=33, key="p_desc_otro")
         else:
             pallets_descarga = int(opcion_pallets_d)
     
@@ -115,24 +115,52 @@ if activar_descarga:
 st.divider()
 
 # ==========================================
-# BLOQUE 2: CARGA
+# BLOQUE 2: CARGA (CON LANZADERAS INTELIGENTES P / M)
 # ==========================================
 activar_carga = st.checkbox("📤 Registrar CARGA de mercancía")
 
 albaran_carga = ""
-pallets_carga = 1
+pallets_carga = 33
 c_llegada_h = 9
 c_llegada_m = 0
 
 if activar_carga:
-    st.markdown("#### Tiempos de Carga")
-    col_c1, col_c2 = st.columns(2)
-    with col_c1:
-        albaran_carga = st.text_input("Nº de Albarán / Pedido (Carga)", key="alb_carg")
-    with col_c2:
+    st.markdown("#### Tiempos y Referencia de Carga (Lanzadera)")
+    
+    # Selector de tipo de carga (P, M o Personalizado)
+    col_tc1, col_tc2, col_tc3 = st.columns(3)
+    with col_tc1:
+        tipo_lanzadera = st.selectbox("Tipo de Referencia", ["P (Lanzadera)", "M (Lanzadera)", "Albarán Personalizado"], key="tipo_lanz")
+    
+    # Generador automático de formato PDDMMAA-X o MDDMMAA-X
+    str_fecha_ddmmaa = fecha_registro.strftime("%d%m%y")
+    df_actual = st.session_state.df_registros
+    
+    if tipo_lanzadera in ["P (Lanzadera)", "M (Lanzadera)"]:
+        letra_prefijo = "P" if tipo_lanzadera.startswith("P") else "M"
+        
+        # Calcular el número secuencial diario basado en lo registrado en la sesión para esa fecha y tipo
+        siguiente_num = 1
+        if not df_actual.empty and "Fecha Registro" in df_actual.columns and "Albarán" in df_actual.columns:
+            filtro_fecha = df_actual["Fecha Registro"] == fecha_registro.strftime("%Y-%m-%d")
+            filtro_op = df_actual["Operación"] == "Carga"
+            subset = df_actual[filtro_fecha & filtro_op]
+            prefijo_buscado = f"{letra_prefijo}{str_fecha_ddmmaa}-"
+            coincidencias = subset[subset["Albarán"].str.startswith(prefijo_buscado, na=False)]
+            siguiente_num = len(coincidencias) + 1
+            
+        sugerencia_codigo = f"{letra_prefijo}{str_fecha_ddmmaa}-{siguiente_num}"
+        
+        with col_tc2:
+            albaran_carga = st.text_input("Código de Lanzadera", value=sugerencia_codigo, key="alb_lanzadera")
+    else:
+        with col_tc2:
+            albaran_carga = st.text_input("Nº de Albarán Personalizado", key="alb_custom")
+
+    with col_tc3:
         opcion_pallets_c = st.selectbox("Pallets Cargados", ["33", "26", "Otra cantidad"], key="opt_p_carg")
         if opcion_pallets_c == "Otra cantidad":
-            pallets_carga = st.number_input("Especifica cantidad de pallets", min_value=1, max_value=200, value=1, key="p_carg_otro")
+            pallets_carga = st.number_input("Especifica pallets", min_value=1, max_value=200, value=33, key="p_carg_otro")
         else:
             pallets_carga = int(opcion_pallets_c)
     
