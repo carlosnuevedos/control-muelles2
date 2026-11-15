@@ -102,37 +102,12 @@ carretilleros_existentes = sorted(carretilleros_existentes)
 # --- DISEÑO EN 2 COLUMNAS ALINEADAS ---
 col_f1, col_f2 = st.columns(2)
 
+# FILA 1: Fecha (Izquierda) y Carretillero (Derecha) perfectamente alineados
 with col_f1:
     fecha_registro = st.date_input("Fecha del Registro", value=datetime.now())
-    
-    st.markdown("##### Matrícula del Vehículo")
-    # 1. Cuadrícula arriba
-    if st.session_state.modo_mat == "Seleccionar existente":
-        if matriculas_guardadas:
-            matricula = st.selectbox("Matrícula", matriculas_guardadas, label_visibility="collapsed", key="select_mat_existente")
-        else:
-            st.info("No hay matrículas guardadas.")
-            matricula = ""
-    else:
-        matricula = st.text_input("Escribe la nueva matrícula", placeholder="Ej: 1234ABC", label_visibility="collapsed", key="input_nueva_mat").strip().upper()
-
-    # 2. Botones de selección justo debajo
-    nuevo_modo_mat = st.radio(
-        "Modo Matrícula", 
-        ["Seleccionar existente", "Escribir nueva"], 
-        index=0 if st.session_state.modo_mat == "Seleccionar existente" else 1,
-        horizontal=True, 
-        label_visibility="collapsed",
-        key="radio_modo_mat"
-    )
-    if nuevo_modo_mat != st.session_state.modo_mat:
-        st.session_state.modo_mat = nuevo_modo_mat
-        st.rerun()
 
 with col_f2:
-    st.write("") # Espaciador superior invisible para alinear perfectamente con la fecha
     st.markdown("##### Carretillero")
-    # 1. Cuadrícula arriba
     if st.session_state.modo_carr == "Seleccionar existente":
         carretillero = st.selectbox("Carretillero", carretilleros_existentes, label_visibility="collapsed", key="select_carretillero_existente")
     else:
@@ -154,7 +129,6 @@ with col_f2:
         
         carretillero = nuevo_carr if nuevo_carr else (carretilleros_existentes[0] if carretilleros_existentes else "")
 
-    # 2. Botones de selección justo debajo
     nuevo_modo_carr = st.radio(
         "Modo Carretillero", 
         ["Seleccionar existente", "➕ Añadir nuevo"], 
@@ -165,6 +139,30 @@ with col_f2:
     )
     if nuevo_modo_carr != st.session_state.modo_carr:
         st.session_state.modo_carr = nuevo_modo_carr
+        st.rerun()
+
+# FILA 2: Matrícula (Izquierda)
+with col_f1:
+    st.markdown("##### Matrícula del Vehículo")
+    if st.session_state.modo_mat == "Seleccionar existente":
+        if matriculas_guardadas:
+            matricula = st.selectbox("Matrícula", matriculas_guardadas, label_visibility="collapsed", key="select_mat_existente")
+        else:
+            st.info("No hay matrículas guardadas.")
+            matricula = ""
+    else:
+        matricula = st.text_input("Escribe la nueva matrícula", placeholder="Ej: 1234ABC", label_visibility="collapsed", key="input_nueva_mat").strip().upper()
+
+    nuevo_modo_mat = st.radio(
+        "Modo Matrícula", 
+        ["Seleccionar existente", "Escribir nueva"], 
+        index=0 if st.session_state.modo_mat == "Seleccionar existente" else 1,
+        horizontal=True, 
+        label_visibility="collapsed",
+        key="radio_modo_mat"
+    )
+    if nuevo_modo_mat != st.session_state.modo_mat:
+        st.session_state.modo_mat = nuevo_modo_mat
         st.rerun()
 
 st.divider()
@@ -209,216 +207,4 @@ if activar_descarga:
     with c_fm:
         d_fin_m = st.selectbox("Minutos Fin (Descarga)", lista_minutos, index=0, key="df_m")
 
-    t_lleg_d = (d_llegada_h * 60) + d_llegada_m
-    t_ini_d = (d_inicio_h * 60) + d_inicio_m
-    t_fin_d = (d_fin_h * 60) + d_fin_m
-    if t_ini_d < t_lleg_d or t_fin_d < t_ini_d:
-        st.error("⚠️ [Descarga] Incongruencia horaria: La llegada debe ser anterior al inicio, y el inicio anterior al fin.")
-
-st.divider()
-
-# ==========================================
-# BLOQUE 2: CARGA (CON LANZADERAS INTELIGENTES P / M)
-# ==========================================
-activar_carga = st.checkbox("📤 Registrar CARGA de mercancía", key="chk_carga")
-
-albaran_carga = ""
-pallets_carga = 33
-c_llegada_h = 9
-c_llegada_m = 0
-c_inicio_h = 9
-c_inicio_m = 0
-c_fin_h = 10
-c_fin_m = 0
-
-if activar_carga:
-    st.markdown("#### Tiempos y Referencia de Carga (Lanzadera)")
-    
-    col_tc1, col_tc2, col_tc3 = st.columns(3)
-    with col_tc1:
-        tipo_lanzadera = st.selectbox("Tipo de Referencia", ["P (Lanzadera)", "M (Lanzadera)", "Albarán Personalizado"], key="tipo_lanz")
-        
-        if "ultimo_tipo_lanz" not in st.session_state:
-            st.session_state.ultimo_tipo_lanz = tipo_lanzadera
-        elif st.session_state.ultimo_tipo_lanz != tipo_lanzadera:
-            st.session_state.ultimo_tipo_lanz = tipo_lanzadera
-            if "alb_lanzadera" in st.session_state:
-                del st.session_state["alb_lanzadera"]
-            st.rerun()
-    
-    str_fecha_ddmmaa = fecha_registro.strftime("%d%m%y")
-    df_actual = st.session_state.df_registros
-    
-    if tipo_lanzadera in ["P (Lanzadera)", "M (Lanzadera)"]:
-        letra_prefijo = "P" if tipo_lanzadera.startswith("P") else "M"
-        
-        siguiente_num = 1
-        if not df_actual.empty:
-            prefijo_buscado = f"{letra_prefijo}{str_fecha_ddmmaa}-".upper()
-            
-            conteo_coincidencias = 0
-            for index, row in df_actual.iterrows():
-                val_albaran = str(row.iloc[2]).strip().upper()
-                if val_albaran.startswith(prefijo_buscado):
-                    conteo_coincidencias += 1
-            
-            siguiente_num = conteo_coincidencias + 1
-            
-        sugerencia_codigo = f"{letra_prefijo}{str_fecha_ddmmaa}-{siguiente_num}"
-        
-        with col_tc2:
-            albaran_carga = st.text_input("Código de Lanzadera", value=sugerencia_codigo, key="alb_lanzadera")
-    else:
-        with col_tc2:
-            albaran_carga = st.text_input("Nº de Albarán Personalizado", key="alb_custom")
-
-    with col_tc3:
-        opcion_pallets_c = st.selectbox("Pallets Cargados", ["33", "26", "Otra cantidad"], key="opt_p_carg")
-        if opcion_pallets_c == "Otra cantidad":
-            pallets_carga = st.number_input("Especifica pallets", min_value=1, max_value=200, value=33, key="p_carg_otro")
-        else:
-            pallets_carga = int(opcion_pallets_c)
-    
-    if activar_descarga:
-        c_llegada_h = d_fin_h
-        c_llegada_m = d_fin_m
-        st.info(f"ℹ️ El camión ya está en las instalaciones (Llegada heredada de la descarga a las {c_llegada_h:02d}:{c_llegada_m:02d}).")
-    else:
-        st.write("**Horarios de Carga (Vehículo externo que solo carga):**")
-        cl_lh, cl_lm = st.columns(2)
-        with cl_lh:
-            c_llegada_h = st.selectbox("Hora Llegada (Carga)", lista_horas, index=9, key="cl_h")
-        with cl_lm:
-            c_llegada_m = st.selectbox("Minutos Llegada (Carga)", lista_minutos, index=0, key="cl_m")
-        
-    ci_h, ci_im = st.columns(2)
-    with ci_h:
-        c_inicio_h = st.selectbox("Hora Inicio (Carga)", lista_horas, index=c_llegada_h, key="ci_h")
-    with ci_im:
-        c_inicio_m = st.selectbox("Minutos Inicio (Carga)", lista_minutos, index=0, key="ci_im")
-        
-    cf_h, cf_fm = st.columns(2)
-    with cf_h:
-        c_fin_h = st.selectbox("Hora Fin (Carga)", lista_horas, index=c_inicio_h + 1 if c_inicio_h < 23 else 23, key="cf_h")
-    with cf_fm:
-        c_fin_m = st.selectbox("Minutos Fin (Carga)", lista_minutos, index=0, key="cf_m")
-
-    t_lleg_c = (c_llegada_h * 60) + c_llegada_m
-    t_ini_c = (c_inicio_h * 60) + c_inicio_m
-    t_fin_c = (c_fin_h * 60) + c_fin_m
-    if t_ini_c < t_lleg_c or t_fin_c < t_ini_c:
-        st.error("⚠️ [Carga] Incongruencia horaria: La hora de inicio no puede ser anterior a la de llegada, ni la de fin anterior a la de inicio.")
-
-incidencias = st.text_area("Incidencias Generales (opcional)", placeholder="Ej: Retraso en documentación, mercancía dañada...", key="incidencias_input")
-
-submitted = st.button("Guardar Registros")
-
-if submitted:
-    if not matricula:
-        st.error("Por favor, introduce o selecciona una matrícula.")
-    elif not carretillero:
-        st.error("Por favor, selecciona o introduce un carretillero.")
-    elif not activar_descarga and not activar_carga:
-        st.warning("Debes marcar al menos una opción: Descarga o Carga.")
-    else:
-        error_horario = False
-        if activar_descarga and (t_ini_d < t_lleg_d or t_fin_d < t_ini_d):
-            error_horario = True
-        if activar_carga and (t_ini_c < t_lleg_c or t_fin_c < t_ini_c):
-            error_horario = True
-
-        if error_horario:
-            st.error("❌ No se puede guardar: Revisa los avisos en rojo de los horarios seleccionados.")
-        else:
-            try:
-                nuevos_datos = []
-                texto_incidencias = incidencias.strip() if incidencias else ""
-                
-                if activar_descarga:
-                    min_esp_d = t_ini_d - t_lleg_d
-                    min_op_d = t_fin_d - t_ini_d
-                    min_tot_d = "" if activar_carga else (t_fin_d - t_lleg_d)
-                    
-                    turno_calc_d = calcular_turno(d_inicio_h, d_inicio_m)
-                    
-                    nuevos_datos.append([
-                        fecha_registro.strftime("%Y-%m-%d"),
-                        matricula.upper(),
-                        albaran_descarga if albaran_descarga else "S/A",
-                        "Descarga",
-                        f"{d_llegada_h:02d}:{d_llegada_m:02d}",
-                        f"{d_inicio_h:02d}:{d_inicio_m:02d}",
-                        f"{d_fin_h:02d}:{d_fin_m:02d}",
-                        int(min_esp_d),
-                        int(min_op_d),
-                        min_tot_d if min_tot_d == "" else int(min_tot_d),
-                        int(pallets_descarga),
-                        carretillero,
-                        turno_calc_d,
-                        texto_incidencias
-                    ])
-
-                if activar_carga:
-                    if activar_descarga:
-                        min_esp_c = 0
-                        hora_llegada_str = f"{d_fin_h:02d}:{d_fin_m:02d} (Post-Descarga)"
-                        min_tot_c = t_fin_c - t_lleg_d
-                    else:
-                        min_esp_c = t_ini_c - t_lleg_c
-                        hora_llegada_str = f"{c_llegada_h:02d}:{c_llegada_m:02d}"
-                        min_tot_c = t_fin_c - t_lleg_c
-                    
-                    min_op_c = t_fin_c - t_ini_c
-                    
-                    turno_calc_c = calcular_turno(c_inicio_h, c_inicio_m)
-                    
-                    nuevos_datos.append([
-                        fecha_registro.strftime("%Y-%m-%d"),
-                        matricula.upper(),
-                        albaran_carga if albaran_carga else "S/A",
-                        "Carga",
-                        hora_llegada_str,
-                        f"{c_inicio_h:02d}:{c_inicio_m:02d}",
-                        f"{c_fin_h:02d}:{c_fin_m:02d}",
-                        int(min_esp_c),
-                        int(min_op_c),
-                        int(min_tot_c),
-                        int(pallets_carga),
-                        carretillero,
-                        turno_calc_c,
-                        texto_incidencias
-                    ])
-
-                # Enviar a Google Sheets vía Web App
-                response = requests.post(WEB_APP_URL, json={"action": "update", "rows": nuevos_datos})
-                
-                if response.status_code == 200:
-                    st.success(f"✅ ¡Guardado y sincronizado en Google Sheets para **{matricula.upper()}**!")
-                    st.balloons()
-                    
-                    # Limpiar claves de sesión para reiniciar campos
-                    claves_a_borrar = [
-                        "input_nueva_mat", "alb_desc", "alb_lanzadera", "alb_custom", 
-                        "chk_descarga", "chk_carga", "incidencias_input", "input_nuevo_carr"
-                    ]
-                    for clave in claves_a_borrar:
-                        if clave in st.session_state:
-                            del st.session_state[clave]
-                    
-                    # Refrescar la memoria SOLO TRAS GUARDAR con éxito
-                    st.session_state.df_registros = cargar_registros_desde_sheets()
-                    
-                    time.sleep(1.2)
-                    st.rerun()
-                else:
-                    st.error(f"❌ Error al conectar con Google Sheets (Código {response.status_code}): {response.text}")
-                
-            except Exception as e:
-                st.error(f"❌ Error al procesar el guardado: {e}")
-
-st.divider()
-st.subheader("📊 Historial de Registros (Cargados en Memoria)")
-if not st.session_state.df_registros.empty:
-    st.dataframe(st.session_state.df_registros, use_container_width=True)
-else:
-    st.info("Aún no hay registros en la hoja de cálculo.")
+    t_lleg_d = (d_llegada_h * 60) +
