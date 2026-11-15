@@ -2,7 +2,6 @@ import streamlit as st
 from datetime import datetime
 import pandas as pd
 import requests
-import json
 import time
 
 # Configuración de la página web
@@ -31,21 +30,21 @@ COLS_NECESARIAS = [
 # --- FUNCIÓN PARA CARGAR DATOS DESDE GOOGLE SHEETS AL INICIAR ---
 def cargar_registros_desde_sheets():
     try:
-        # Hacemos una petición GET (o POST con acción leer) al Apps Script
         response = requests.post(WEB_APP_URL, json={"action": "leer"})
         if response.status_code == 200:
             data = response.json()
-            if "rows" in data and len(data["rows"]) > 0:
-                # Convertimos los datos devueltos en un DataFrame de pandas
-                df = pd.DataFrame(data["rows"])
-                # Aseguramos que tenga las columnas correctas
-                if list(df.columns) != COLS_NECESARIAS and len(df.columns) == len(COLS_NECESARIAS):
+            if "rows" in data and len(data["rows"]) > 1:
+                rows = data["rows"]
+                header = rows[0]
+                data_rows = rows[1:]
+                df = pd.DataFrame(data_rows, columns=header)
+                # Asegurar que tenga exactamente las columnas necesarias
+                if len(df.columns) == len(COLS_NECESARIAS):
                     df.columns = COLS_NECESARIAS
                 return df
     except Exception as e:
         pass
     
-    # Si falla o está vacío, devolvemos un DataFrame vacío con la estructura
     return pd.DataFrame(columns=COLS_NECESARIAS)
 
 # Inicializar historial en memoria sincronizado con Sheets
@@ -80,21 +79,21 @@ with col_f1:
 # Extraer matrículas existentes desde los datos cargados de Google Sheets
 matriculas_guardadas = []
 if not st.session_state.df_registros.empty and "Matrícula" in st.session_state.df_registros.columns:
-    matriculas_guardadas = sorted(st.session_state.df_registros["Matrícula"].dropna().unique().tolist())
+    matriculas_guardadas = sorted(st.session_state.df_registros["Matrícula"].dropna().astype(str).unique().tolist())
 
 with col_f2:
     tipo_ingreso_mat = st.radio("Matrícula:", ["Seleccionar existente", "Escribir nueva"], horizontal=True, label_visibility="collapsed")
     if tipo_ingreso_mat == "Seleccionar existente" and matriculas_guardadas:
         matricula = st.selectbox("Matrícula del Vehículo", matriculas_guardadas)
     else:
-        matricula = st.text_input("Escribe la nueva matrícula").strip().upper()
+        matricula = st.text_input("Escribe la nueva matrícula", key="input_nueva_mat").strip().upper()
 
 st.divider()
 
 # ==========================================
 # BLOQUE 1: DESCARGA
 # ==========================================
-activar_descarga = st.checkbox("📥 Registrar DESCARGA de mercancía")
+activar_descarga = st.checkbox("📥 Registrar DESCARGA de mercancía", key="chk_descarga")
 
 albaran_descarga = ""
 pallets_descarga = 33
@@ -142,7 +141,7 @@ st.divider()
 # ==========================================
 # BLOQUE 2: CARGA (CON LANZADERAS INTELIGENTES P / M)
 # ==========================================
-activar_carga = st.checkbox("📤 Registrar CARGA de mercancía")
+activar_carga = st.checkbox("📤 Registrar CARGA de mercancía", key="chk_carga")
 
 albaran_carga = ""
 pallets_carga = 33
@@ -162,14 +161,19 @@ if activar_carga:
     if tipo_lanzadera in ["P (Lanzadera)", "M (Lanzadera)"]:
         letra_prefijo = "P" if tipo_lanzadera.startswith("P") else "M"
         
-        # Calcular el número secuencial basándose en los datos ya cargados de Google Sheets para esa fecha
+        # Calcular número secuencial robusto leyendo del DataFrame cargado
         siguiente_num = 1
         if not df_actual.empty and "Fecha Registro" in df_actual.columns and "Albarán" in df_actual.columns:
-            filtro_fecha = df_actual["Fecha Registro"] == fecha_registro.strftime("%Y-%m-%d")
-            filtro_op = df_actual["Operación"] == "Carga"
+            fecha_str_buscada = fecha_registro.strftime("%Y-%m-%d")
+            # Normalizar fechas a string para comparar sin errores de tipo
+            df_actual["Fecha_str"] = df_actual["Fecha Registro"].astype(str).str.slice(0, 10)
+            
+            filtro_fecha = df_actual["Fecha_str"] == fecha_str_buscada
+            filtro_op = df_actual["Operación"].astype(str) == "Carga"
             subset = df_actual[filtro_fecha & filtro_op]
+            
             prefijo_buscado = f"{letra_prefijo}{str_fecha_ddmmaa}-"
-            coincidencias = subset[subset["Albarán"].str.startswith(prefijo_buscado, na=False)]
+            coincidencias = subset[subset["Albarán"].astype(str).str.startswith(prefijo_buscado, na=False)]
             siguiente_num = len(coincidencias) + 1
             
         sugerencia_codigo = f"{letra_prefijo}{str_fecha_ddmmaa}-{siguiente_num}"
@@ -217,7 +221,7 @@ if activar_carga:
     if t_ini_c < t_lleg_c or t_fin_c < t_ini_c:
         st.error("⚠️ [Carga] Incongruencia horaria: La hora de inicio no puede ser anterior a la de llegada, ni la de fin anterior a la de inicio.")
 
-incidencias = st.text_area("Incidencias Generales (opcional)", placeholder="Ej: Retraso en documentación, mercancía dañada...")
+incidencias = st.text_area("Incidencias Generales (opcional)", placeholder="Ej: Retraso en documentación, mercancía dañada...", key="incidencias_input")
 
 submitted = st.button("Guardar Registros")
 
@@ -242,12 +246,7 @@ if submitted:
                 if activar_descarga:
                     min_esp_d = t_ini_d - t_lleg_d
                     min_op_d = t_fin_d - t_ini_d
-                    
-                    if activar_carga:
-                        min_tot_d = "" 
-                    else:
-                        min_tot_d = t_fin_d - t_lleg_d
-
+                    min_tot_d = "" if activar_carga else (t_fin_d - t_lleg_d)
                     turno_calc = calcular_turno(d_llegada_h, d_llegada_m)
                     
                     nuevos_datos.append([
@@ -302,32 +301,6 @@ if submitted:
                 response = requests.post(WEB_APP_URL, json={"action": "update", "rows": nuevos_datos})
                 
                 if response.status_code == 200:
+                    # Actualizar memoria local
                     df_nuevo = pd.DataFrame(nuevos_datos, columns=COLS_NECESARIAS)
-                    st.session_state.df_registros = pd.concat([st.session_state.df_registros, df_nuevo], ignore_index=True)
-                    
-                    st.success(f"✅ ¡Guardado y sincronizado en Google Sheets para **{matricula.upper()}**! (Carretillero: {carretillero} | Turno: {turno_calc})")
-                    st.balloons()
-                    
-                    st.markdown("""
-                        <script>
-                            const mediaQuery = window.parent.document.querySelector('.main');
-                            if (mediaQuery) {
-                                mediaQuery.scrollTo({top: 0, behavior: 'smooth'});
-                            }
-                        </script>
-                    """, unsafe_allow_html=True)
-                    
-                    time.sleep(1.5)
-                    st.rerun()
-                else:
-                    st.error(f"❌ Error al conectar con Google Sheets (Código {response.status_code}): {response.text}")
-                
-            except Exception as e:
-                st.error(f"❌ Error al procesar el guardado: {e}")
-
-st.divider()
-st.subheader("📊 Historial de Registros (Cargados desde Google Sheets)")
-if not st.session_state.df_registros.empty:
-    st.dataframe(st.session_state.df_registros, use_container_width=True)
-else:
-    st.info("Aún no hay registros en la hoja de cálculo.")
+                    st.session_state.df_registros
