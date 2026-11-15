@@ -3,30 +3,42 @@ from datetime import datetime
 import pandas as pd
 import requests
 import time
+from PIL import Image
 
 # Configuración de la página web
 st.set_page_config(page_title="Control de Muelles - Almacén", page_icon="🚛", layout="centered")
 
-# --- ESTILOS CSS PERSONALIZADOS (FUENTE MÁS PROFESIONAL) ---
+# --- ESTILOS CSS PERSONALIZADOS (FUENTE MÁS PROFESIONAL Y LIMPIA) ---
 st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
         
         html, body, [class*="css"] {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
         }
         
-        /* Ajuste fino para la tipografía de los títulos principales y subtítulos */
         h1, h2, h3 {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             font-weight: 700;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# Título principal actualizado sin el camión y con el nombre corporativo
-st.title("Control de Muelles y Cargas - Azentis Persán La Red")
-st.write("Conectado a Google Sheets mediante Google Apps Script.")
+# --- CABECERA CORPORATIVA CON LOGO Y TÍTULO ---
+col_logo, col_titulo = st.columns([0.18, 0.82])
+
+with col_logo:
+    try:
+        logo = Image.open("AZENTIS-SIN-FONDO.png")
+        st.image(logo, width=85)
+    except Exception:
+        st.write("🚛") # Fallback por si la imagen no está en la ruta
+
+with col_titulo:
+    st.markdown("<h2 style='padding-top: 5px; margin-bottom: 0px;'>Control de Muelles y Cargas</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #555555; font-weight: 500; margin-top: 2px;'>Azentis Persán La Red • Conectado a Google Sheets</p>", unsafe_allow_html=True)
+
+st.divider()
 
 # --- CONFIGURACIÓN DE URL DE APPS SCRIPT ACTUALIZADA ---
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyP9cpZSNJdUfEWATW0gIfot-Mg_9_wDy_LZeYY52Ln-kkrWHlQ4PhbLg1iHRcJQncj5Q/exec"
@@ -401,7 +413,6 @@ elif modo_app == "Cargas de Cliente":
         st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 6px; color: inherit;">Carretillero</p>', unsafe_allow_html=True)
         carretillero_cli = st.selectbox("Carretillero (Cliente)", carretilleros_existentes, label_visibility="collapsed", key="sel_carr_cli")
         
-        # Selector de Pallets con las opciones solicitadas en orden
         opcion_pallets_cli = st.selectbox("Número de Pallets", ["33", "26", "24", "21", "50", "Otra cantidad"], key="opt_p_cli")
         if opcion_pallets_cli == "Otra cantidad":
             num_pallets_cli = st.number_input("Especifica número de pallets", min_value=1, max_value=200, value=33, key="p_cli_otro")
@@ -410,7 +421,6 @@ elif modo_app == "Cargas de Cliente":
 
     st.markdown("#### Horarios y Control")
     
-    # Horarios organizados de forma horizontal en columnas (igual que Lanzaderas)
     st.write("**Hora Picada:**")
     c_ph1, c_ph2 = st.columns(2)
     with c_ph1:
@@ -432,7 +442,6 @@ elif modo_app == "Cargas de Cliente":
     with c_cf2:
         cf_m = st.selectbox("Minutos Fin", lista_minutos, index=0, key="cf_m")
 
-    # Opción de etiquetas ("Sí", "No" o en blanco)
     opcion_etiquetas = st.selectbox("¿Lleva etiquetas?", ["", "Sí", "No"], key="opt_etiquetas")
 
     incidencias_cli = st.text_area("Incidencias (opcional)", placeholder="Ej: Falta de stock, retraso...", key="inc_cli")
