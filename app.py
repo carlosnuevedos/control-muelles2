@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import datetime
 import pandas as pd
 import requests
+import json
 import time
 
 # Configuración de la página web
@@ -11,7 +12,7 @@ st.title("🚛 Registro de Carga y Descarga en Muelle (Online)")
 st.write("Conectado a Google Sheets mediante Google Apps Script.")
 
 # --- CONFIGURACIÓN DE URL DE APPS SCRIPT ---
-WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw6ASYyy6hW6gdjqjVSnrgvneo0-3wh2UhM4Hi5yi9bWk2_O3iRqTYX2EF3Pph5ymq3Cw/exec"
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw9oPFCuuCOcMTIpbIQZipYlpmyrWtfSmjKQdpae3beI3D9Pp-iZTbMfRypXtzXAtOSNQ/exec"
 
 # Lista de carretilleros disponibles
 LISTA_CARRETILLEROS = [
@@ -27,9 +28,29 @@ COLS_NECESARIAS = [
     "Pallets", "Carretillero", "Turno", "Incidencias"
 ]
 
-# Inicializar historial en memoria de la sesión
+# --- FUNCIÓN PARA CARGAR DATOS DESDE GOOGLE SHEETS AL INICIAR ---
+def cargar_registros_desde_sheets():
+    try:
+        # Hacemos una petición GET (o POST con acción leer) al Apps Script
+        response = requests.post(WEB_APP_URL, json={"action": "leer"})
+        if response.status_code == 200:
+            data = response.json()
+            if "rows" in data and len(data["rows"]) > 0:
+                # Convertimos los datos devueltos en un DataFrame de pandas
+                df = pd.DataFrame(data["rows"])
+                # Aseguramos que tenga las columnas correctas
+                if list(df.columns) != COLS_NECESARIAS and len(df.columns) == len(COLS_NECESARIAS):
+                    df.columns = COLS_NECESARIAS
+                return df
+    except Exception as e:
+        pass
+    
+    # Si falla o está vacío, devolvemos un DataFrame vacío con la estructura
+    return pd.DataFrame(columns=COLS_NECESARIAS)
+
+# Inicializar historial en memoria sincronizado con Sheets
 if "df_registros" not in st.session_state:
-    st.session_state.df_registros = pd.DataFrame(columns=COLS_NECESARIAS)
+    st.session_state.df_registros = cargar_registros_desde_sheets()
 
 # Función para calcular el turno según la hora y minuto
 def calcular_turno(hora, minuto):
@@ -45,7 +66,7 @@ def calcular_turno(hora, minuto):
 lista_horas = list(range(0, 24))
 lista_minutos = list(range(0, 60, 5))
 
-# Ancla invisible arriba del todo para que la app vuelva al inicio al recargar
+# Ancla invisible arriba del todo para el scroll automático
 st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
 
 st.subheader("Nuevo Registro de Vehículo")
@@ -56,6 +77,7 @@ with col_f1:
     fecha_registro = st.date_input("Fecha del Registro", value=datetime.now())
     carretillero = st.selectbox("Carretillero", LISTA_CARRETILLEROS)
 
+# Extraer matrículas existentes desde los datos cargados de Google Sheets
 matriculas_guardadas = []
 if not st.session_state.df_registros.empty and "Matrícula" in st.session_state.df_registros.columns:
     matriculas_guardadas = sorted(st.session_state.df_registros["Matrícula"].dropna().unique().tolist())
@@ -140,6 +162,7 @@ if activar_carga:
     if tipo_lanzadera in ["P (Lanzadera)", "M (Lanzadera)"]:
         letra_prefijo = "P" if tipo_lanzadera.startswith("P") else "M"
         
+        # Calcular el número secuencial basándose en los datos ya cargados de Google Sheets para esa fecha
         siguiente_num = 1
         if not df_actual.empty and "Fecha Registro" in df_actual.columns and "Albarán" in df_actual.columns:
             filtro_fecha = df_actual["Fecha Registro"] == fecha_registro.strftime("%Y-%m-%d")
@@ -285,7 +308,6 @@ if submitted:
                     st.success(f"✅ ¡Guardado y sincronizado en Google Sheets para **{matricula.upper()}**! (Carretillero: {carretillero} | Turno: {turno_calc})")
                     st.balloons()
                     
-                    # 3. Forzar scroll arriba del todo mediante JavaScript y recargar limpio
                     st.markdown("""
                         <script>
                             const mediaQuery = window.parent.document.querySelector('.main');
@@ -304,8 +326,8 @@ if submitted:
                 st.error(f"❌ Error al procesar el guardado: {e}")
 
 st.divider()
-st.subheader("📊 Historial de Registros (Sesión actual)")
+st.subheader("📊 Historial de Registros (Cargados desde Google Sheets)")
 if not st.session_state.df_registros.empty:
     st.dataframe(st.session_state.df_registros, use_container_width=True)
 else:
-    st.info("Aún no hay registros en esta sesión. ¡Haz el primero arriba!")
+    st.info("Aún no hay registros en la hoja de cálculo.")
