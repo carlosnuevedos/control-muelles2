@@ -27,7 +27,7 @@ COLS_NECESARIAS = [
     "Pallets", "Carretillero", "Turno", "Incidencias"
 ]
 
-# --- FUNCIÓN PARA CARGAR DATOS DESDE GOOGLE SHEETS AL INICIAR ---
+# --- FUNCIÓN ROBUSTA PARA CARGAR DESDE GOOGLE SHEETS ---
 def cargar_registros_desde_sheets():
     try:
         response = requests.post(WEB_APP_URL, json={"action": "leer"})
@@ -35,12 +35,13 @@ def cargar_registros_desde_sheets():
             data = response.json()
             if "rows" in data and len(data["rows"]) > 1:
                 rows = data["rows"]
-                header = rows[0]
-                data_rows = rows[1:]
-                df = pd.DataFrame(data_rows, columns=header)
-                if len(df.columns) == len(COLS_NECESARIAS):
+                data_rows = rows[1:] # Omitir cabecera
+                
+                df = pd.DataFrame(data_rows)
+                if df.shape[1] >= len(COLS_NECESARIAS):
+                    df = df.iloc[:, :len(COLS_NECESARIAS)]
                     df.columns = COLS_NECESARIAS
-                return df
+                    return df
     except Exception as e:
         pass
     
@@ -75,10 +76,10 @@ with col_f1:
     fecha_registro = st.date_input("Fecha del Registro", value=datetime.now())
     carretillero = st.selectbox("Carretillero", LISTA_CARRETILLEROS)
 
-# Extraer matrículas existentes desde los datos cargados de Google Sheets
+# Extraer matrículas existentes desde la Columna B (índice 1)
 matriculas_guardadas = []
-if not st.session_state.df_registros.empty and "Matrícula" in st.session_state.df_registros.columns:
-    matriculas_guardadas = sorted(st.session_state.df_registros["Matrícula"].dropna().astype(str).unique().tolist())
+if not st.session_state.df_registros.empty:
+    matriculas_guardadas = sorted(st.session_state.df_registros.iloc[:, 1].dropna().astype(str).str.strip().unique().tolist())
 
 with col_f2:
     tipo_ingreso_mat = st.radio("Matrícula:", ["Seleccionar existente", "Escribir nueva"], horizontal=True, label_visibility="collapsed")
@@ -154,7 +155,7 @@ if activar_carga:
     with col_tc1:
         tipo_lanzadera = st.selectbox("Tipo de Referencia", ["P (Lanzadera)", "M (Lanzadera)", "Albarán Personalizado"], key="tipo_lanz")
         
-        # Detectar si cambió el tipo de lanzadera para forzar actualización del código
+        # Forzar actualización del código al cambiar entre P y M
         if "ultimo_tipo_lanz" not in st.session_state:
             st.session_state.ultimo_tipo_lanz = tipo_lanzadera
         elif st.session_state.ultimo_tipo_lanz != tipo_lanzadera:
@@ -170,21 +171,22 @@ if activar_carga:
         letra_prefijo = "P" if tipo_lanzadera.startswith("P") else "M"
         
         siguiente_num = 1
-        if not df_actual.empty and "Fecha Registro" in df_actual.columns and "Albarán" in df_actual.columns:
+        if not df_actual.empty:
             fecha_str_buscada = fecha_registro.strftime("%Y-%m-%d")
             
-            # Normalizar la columna de fechas a texto y extraer solo YYYY-MM-DD de forma segura
-            df_actual["Fecha_str"] = df_actual["Fecha Registro"].astype(str).str.slice(0, 10)
+            # Columna A (0) = Fecha, Columna C (2) = Albarán, Columna D (3) = Operación
+            df_actual["Fecha_str"] = df_actual.iloc[:, 0].astype(str).str.slice(0, 10)
+            df_actual["Operacion_str"] = df_actual.iloc[:, 3].astype(str).str.strip().str.lower()
+            df_actual["Albaran_str"] = df_actual.iloc[:, 2].astype(str).str.strip()
             
             filtro_fecha = df_actual["Fecha_str"] == fecha_str_buscada
-            filtro_op = df_actual["Operación"].astype(str).str.strip().str.lower() == "carga"
+            filtro_op = df_actual["Operacion_str"] == "carga"
             subset = df_actual[filtro_fecha & filtro_op]
             
             prefijo_buscado = f"{letra_prefijo}{str_fecha_ddmmaa}-"
             
-            # Contar cuántas empiezan exactamente por el prefijo (ej. M131126-)
             if not subset.empty:
-                albaranes_serie = subset["Albarán"].astype(str).str.strip()
+                albaranes_serie = subset["Albaran_str"]
                 coincidencias = albaranes_serie[albaranes_serie.str.startswith(prefijo_buscado, na=False)]
                 siguiente_num = len(coincidencias) + 1
             
