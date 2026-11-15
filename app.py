@@ -48,9 +48,19 @@ def cargar_registros_desde_sheets():
     
     return pd.DataFrame(columns=COLS_NECESARIAS)
 
-# Cargar de Google Sheets SOLO al iniciar la sesión en memoria
+# Cargar de Google Sheets al iniciar la sesión en memoria
 if "df_registros" not in st.session_state:
     st.session_state.df_registros = cargar_registros_desde_sheets()
+
+# --- PANEL DE CONTROL LATERAL (BOTÓN DE RECARGA MANUAL) ---
+with st.sidebar:
+    st.write("⚙️ **Panel de Control**")
+    if st.button("🔄 Recargar datos de Google Sheets"):
+        if "df_registros" in st.session_state:
+            del st.session_state["df_registros"]
+        st.session_state.df_registros = cargar_registros_desde_sheets()
+        st.success("¡Datos actualizados al momento!")
+        st.rerun()
 
 # Función para calcular el turno según la hora y minuto
 def calcular_turno(hora, minuto):
