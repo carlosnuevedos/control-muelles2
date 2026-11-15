@@ -136,23 +136,8 @@ def calcular_turno(hora, minuto):
 lista_horas = list(range(0, 24))
 lista_minutos = list(range(0, 60, 5))
 
-# Ancla invisible arriba del todo para el scroll automático instantáneo
+# Ancla invisible arriba del todo
 st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
-
-# Función para forzar el scroll arriba mediante JavaScript avanzado
-def saltar_arriba():
-    st.markdown(
-        """
-        <script>
-            var body = window.parent.document.querySelector(".main");
-            if (body) {
-                body.scrollTop = 0;
-            }
-            window.scrollTo({top: 0, behavior: 'instant'});
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
 
 # ==========================================
 # SELECTOR DE MODO / APARTADO PRINCIPAL
@@ -453,9 +438,9 @@ if modo_app == "Control Lanzaderas":
                             if c in st.session_state: del st.session_state[c]
                         st.session_state.df_registros = cargar_registros_desde_sheets()
                         
-                        # Forzar scroll arriba antes del rerun
-                        saltar_arriba()
-                        time.sleep(0.8)
+                        # TRUCO DEFINITIVO: Cambiar query_params para obligar al navegador a subir arriba al recargar
+                        st.query_params["recarga"] = str(time.time())
+                        time.sleep(0.5)
                         st.rerun()
                     else:
                         st.error(f"❌ Error en servidor: {response.text}")
@@ -568,9 +553,9 @@ elif modo_app == "Cargas de Cliente":
                             if clave in st.session_state:
                                 del st.session_state[clave]
 
-                        # Forzar scroll arriba antes del rerun
-                        saltar_arriba()
-                        time.sleep(0.8)
+                        # TRUCO DEFINITIVO: Cambiar query_params para obligar al navegador a subir arriba al recargar
+                        st.query_params["recarga"] = str(time.time())
+                        time.sleep(0.5)
                         st.rerun()
                     else:
                         st.error(f"❌ Error al conectar con Google Sheets: {response.text}")
