@@ -27,10 +27,12 @@ COLS_NECESARIAS = [
     "Pallets", "Carretillero", "Turno", "Incidencias"
 ]
 
-# --- FUNCIÓN ROBUSTA PARA CARGAR DESDE GOOGLE SHEETS ---
+# --- FUNCIÓN PARA LEER SIEMPRE FRESCO DE GOOGLE SHEETS (SIN CACHÉ) ---
 def cargar_registros_desde_sheets():
     try:
-        response = requests.post(WEB_APP_URL, json={"action": "leer"})
+        # Añadimos un parámetro temporal único para evitar que Google o Streamlit cacheen la respuesta
+        url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
+        response = requests.post(url_fresca, json={"action": "leer"})
         if response.status_code == 200:
             data = response.json()
             if "rows" in data and len(data["rows"]) > 1:
@@ -47,9 +49,8 @@ def cargar_registros_desde_sheets():
     
     return pd.DataFrame(columns=COLS_NECESARIAS)
 
-# Inicializar historial en memoria sincronizado con Sheets
-if "df_registros" not in st.session_state:
-    st.session_state.df_registros = cargar_registros_desde_sheets()
+# Cargar siempre datos frescos al iniciar o recargar
+st.session_state.df_registros = cargar_registros_desde_sheets()
 
 # Función para calcular el turno según la hora y minuto
 def calcular_turno(hora, minuto):
@@ -177,13 +178,13 @@ if activar_carga:
             # Columna A (0) = Fecha, Columna C (2) = Albarán, Columna D (3) = Operación
             df_actual["Fecha_str"] = df_actual.iloc[:, 0].astype(str).str.slice(0, 10)
             df_actual["Operacion_str"] = df_actual.iloc[:, 3].astype(str).str.strip().str.lower()
-            df_actual["Albaran_str"] = df_actual.iloc[:, 2].astype(str).str.strip()
+            df_actual["Albaran_str"] = df_actual.iloc[:, 2].astype(str).str.strip().str.upper()
             
             filtro_fecha = df_actual["Fecha_str"] == fecha_str_buscada
             filtro_op = df_actual["Operacion_str"] == "carga"
             subset = df_actual[filtro_fecha & filtro_op]
             
-            prefijo_buscado = f"{letra_prefijo}{str_fecha_ddmmaa}-"
+            prefijo_buscado = f"{letra_prefijo}{str_fecha_ddmmaa}-".upper()
             
             if not subset.empty:
                 albaranes_serie = subset["Albaran_str"]
@@ -327,9 +328,6 @@ if submitted:
                         if clave in st.session_state:
                             del st.session_state[clave]
                     
-                    # Recargar datos frescos de Google Sheets
-                    st.session_state.df_registros = cargar_registros_desde_sheets()
-                    
                     time.sleep(1.2)
                     st.rerun()
                 else:
@@ -339,7 +337,7 @@ if submitted:
                 st.error(f"❌ Error al procesar el guardado: {e}")
 
 st.divider()
-st.subheader("📊 Historial de Registros (Cargados desde Google Sheets)")
+st.subheader("📊 Historial de Registros (Cargados en Vivo desde Google Sheets)")
 if not st.session_state.df_registros.empty:
     st.dataframe(st.session_state.df_registros, use_container_width=True)
 else:
