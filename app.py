@@ -11,7 +11,7 @@ st.title("🚛 Registro de Carga y Descarga en Muelle (Online)")
 st.write("Conectado a Google Sheets mediante Google Apps Script.")
 
 # --- CONFIGURACIÓN DE URL DE APPS SCRIPT ---
-WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyP9cpZSNJdUfEWATW0gIfot-Mg_9_wDy_LZeYY52Ln-kkrWHlQ4PhbLg1iHRcJQncj5Q/exec/exec"
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyP9cpZSNJdUfEWATW0gIfot-Mg_9_wDy_LZeYY52Ln-kkrWHlQ4PhbLg1iHRcJQncj5Q/exec"
 
 # Lista de carretilleros disponibles
 LISTA_CARRETILLEROS = [
