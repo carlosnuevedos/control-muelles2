@@ -27,13 +27,6 @@ COLS_NECESARIAS_LANZADERAS = [
     "Pallets", "Carretillero", "Turno", "Incidencias"
 ]
 
-# Columnas oficiales para Cargas de Cliente
-COLS_NECESARIAS_CLIENTES = [
-    "Fecha Registro", "Transporte", "Hora Picada", "Hora comienzo", 
-    "Hora Fin", "Minutos Totales Espera", "Número Pallets", 
-    "Carretillero", "¿Etiquetas?", "Incidencias"
-]
-
 # --- FUNCIÓN PARA CARGAR DESDE GOOGLE SHEETS ---
 def cargar_registros_desde_sheets():
     try:
@@ -243,12 +236,14 @@ if modo_app == "Control Lanzaderas":
         col_tc1, col_tc2, col_tc3 = st.columns(3)
         with col_tc1:
             tipo_lanzadera = st.selectbox("Tipo de Referencia", ["P (Lanzadera)", "M (Lanzadera)", "Albarán Personalizado"], key="tipo_lanz")
+            
+            # Detectar cambio en P o M para actualizar el input al vuelo
             if "ultimo_tipo_lanz" not in st.session_state:
                 st.session_state.ultimo_tipo_lanz = tipo_lanzadera
             elif st.session_state.ultimo_tipo_lanz != tipo_lanzadera:
                 st.session_state.ultimo_tipo_lanz = tipo_lanzadera
-                if "alb_lanzadera" in st.session_state:
-                    del st.session_state["alb_lanzadera"]
+                if "input_albaran_lanz" in st.session_state:
+                    del st.session_state["input_albaran_lanz"]
                 st.rerun()
         
         str_fecha_ddmmaa = fecha_registro.strftime("%d%m%y")
@@ -262,11 +257,12 @@ if modo_app == "Control Lanzaderas":
                 conteo_coincidencias = sum(1 for _, row in df_actual.iterrows() if str(row.iloc[2]).strip().upper().startswith(prefijo_buscado))
                 siguiente_num = conteo_coincidencias + 1
             sugerencia_codigo = f"{letra_prefijo}{str_fecha_ddmmaa}-{siguiente_num}"
+            
             with col_tc2:
-                albaran_carga = st.text_input("Código de Lanzadera", value=sugerencia_codigo, key="alb_lanzadera")
+                albaran_carga = st.text_input("Nº Albarán", value=sugerencia_codigo, key="input_albaran_lanz")
         else:
             with col_tc2:
-                albaran_carga = st.text_input("Nº de Albarán Personalizado", key="alb_custom")
+                albaran_carga = st.text_input("Nº Albarán", placeholder="Ej: ALB-12345", key="input_albaran_custom")
 
         with col_tc3:
             opcion_pallets_c = st.selectbox("Pallets Cargados", ["33", "26", "Otra cantidad"], key="opt_p_carg")
@@ -360,9 +356,11 @@ if modo_app == "Control Lanzaderas":
                     if response.status_code == 200:
                         st.success(f"✅ ¡Guardado en Google Sheets para **{matricula.upper()}**!")
                         st.balloons()
-                        for c in ["input_nueva_mat_lanz", "alb_desc", "alb_lanzadera", "alb_custom", "chk_descarga", "chk_carga", "incidencias_input_lanz"]:
+                        for c in ["input_nueva_mat_lanz", "alb_desc", "input_albaran_lanz", "input_albaran_custom", "chk_descarga", "chk_carga", "incidencias_input_lanz"]:
                             if c in st.session_state: del st.session_state[c]
                         st.session_state.df_registros = cargar_registros_desde_sheets()
+                        
+                        st.markdown("<script>window.location.hash = '#top-section';</script>", unsafe_allow_html=True)
                         time.sleep(1.2)
                         st.rerun()
                     else:
@@ -373,88 +371,4 @@ if modo_app == "Control Lanzaderas":
     st.divider()
     st.subheader("📊 Historial de Lanzaderas (En Memoria)")
     if not st.session_state.df_registros.empty:
-        st.dataframe(st.session_state.df_registros, use_container_width=True)
-    else:
-        st.info("Aún no hay registros.")
-
-
-# ==============================================================================
-# SECCIÓN 2: CARGAS DE CLIENTE
-# ==============================================================================
-elif modo_app == "Cargas de Cliente":
-    st.subheader("📦 Nuevo Registro de Carga de Cliente")
-
-    col_c1, col_c2 = st.columns(2)
-    with col_c1:
-        fecha_cliente = st.date_input("Fecha del Registro", value=datetime.now(), key="f_cli")
-        transporte = st.text_input("Número de Transporte", placeholder="Ej: TR-98765", key="num_transporte")
-
-    with col_c2:
-        st.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
-        st.markdown("**Carretillero**")
-        carretillero_cli = st.selectbox("Carretillero (Cliente)", carretilleros_existentes, label_visibility="collapsed", key="sel_carr_cli")
-        
-        num_pallets_cli = st.number_input("Número de Pallets", min_value=1, max_value=200, value=33, key="pallets_cli")
-
-    st.markdown("#### Horarios y Control")
-    
-    col_h1, col_h2, col_h3 = st.columns(3)
-    with col_h1:
-        st.write("**Hora Picada:**")
-        ph_h = st.selectbox("Hora Picada", lista_horas, index=8, key="ph_h")
-        ph_m = st.selectbox("Minutos Picada", lista_minutos, index=0, key="ph_m")
-    with col_h2:
-        st.write("**Hora Comienzo:**")
-        ci_h = st.selectbox("Hora Comienzo", lista_horas, index=8, key="ci_cli_h")
-        ci_m = st.selectbox("Minutos Comienzo", lista_minutos, index=0, key="ci_cli_m")
-    with col_h3:
-        st.write("**Hora Fin:**")
-        cf_h = st.selectbox("Hora Fin", lista_horas, index=9, key="cf_cli_h")
-        cf_m = st.selectbox("Minutos Fin", lista_minutos, index=0, key="cf_cli_m")
-
-    # Opción de etiquetas ("Sí", "No" o en blanco)
-    opcion_etiquetas = st.selectbox("¿Lleva etiquetas?", ["", "Sí", "No"], key="opt_etiquetas")
-
-    incidencias_cli = st.text_area("Incidencias (opcional)", placeholder="Ej: Falta de stock, retraso...", key="inc_cli")
-
-    submitted_cli = st.button("Guardar Carga de Cliente")
-
-    if submitted_cli:
-        if not transporte:
-            st.error("Por favor, introduce el número de transporte.")
-        else:
-            t_picada = (ph_h * 60) + ph_m
-            t_comienzo = (ci_h * 60) + ci_m
-            t_fin = (cf_h * 60) + cf_m
-
-            if t_comienzo < t_picada or t_fin < t_comienzo:
-                st.error("⚠️ Incongruencia horaria: La hora picada debe ser anterior al comienzo, y el comienzo anterior al fin.")
-            else:
-                try:
-                    # Minutos totales de espera (desde la picada hasta el comienzo de la operación)
-                    min_espera_totales = t_comienzo - t_picada
-                    
-                    fila_cliente = [[
-                        fecha_cliente.strftime("%Y-%m-%d"),
-                        transporte.strip().upper(),
-                        f"{ph_h:02d}:{ph_m:02d}",
-                        f"{ci_h:02d}:{ci_m:02d}",
-                        f"{cf_h:02d}:{cf_m:02d}",
-                        int(min_espera_totales),
-                        int(num_pallets_cli),
-                        carretillero_cli,
-                        opcion_etiquetas,
-                        incidencias_cli.strip() if incidencias_cli else ""
-                    ]]
-
-                    response = requests.post(WEB_APP_URL, json={"action": "update_cliente", "rows": fila_cliente})
-                    
-                    if response.status_code == 200:
-                        st.success(f"✅ ¡Carga de cliente **{transporte.upper()}** guardada en la pestaña 'Cargas de cliente'!")
-                        st.balloons()
-                        time.sleep(1.2)
-                        st.rerun()
-                    else:
-                        st.error(f"❌ Error al conectar con Google Sheets: {response.text}")
-                except Exception as e:
-                    st.error(f"❌ Error al procesar: {e}")
+        st.dataframe(st
