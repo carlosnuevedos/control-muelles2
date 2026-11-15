@@ -29,7 +29,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- ESTILOS CSS PERSONALIZADOS (BOTÓN FLOTANTE MINIMALISTA Y TRANSPARENTE) ---
+# --- ESTILOS CSS PERSONALIZADOS (BOTÓN FLOTANTE MINIMALISTA, BLANCO Y NEGRO, TRANSPARENTE) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
@@ -60,18 +60,18 @@ st.markdown("""
             user-select: none;
         }
 
-        /* --- BOTÓN FLOTANTE TRANSPARENTE, SENCILLO Y ELEVADO (EVITA MANAGE APP) --- */
+        /* --- BOTÓN FLOTANTE MINIMALISTA BLANCO, TRANSLÚCIDO Y CON SOMBRA --- */
         .btn-flotante-arriba {
             position: fixed;
-            bottom: 85px; /* Subido para esquivar el widget de Streamlit */
+            bottom: 85px; /* Elevado para esquivar el widget de Streamlit */
             right: 25px;
-            background-color: rgba(255, 255, 255, 0.75); /* Fondo blanco semitransparente */
+            background-color: rgba(255, 255, 255, 0.85); /* Blanco semitransparente */
             color: #000000 !important;
             width: 48px;
             height: 48px;
             border-radius: 50%;
             text-align: center;
-            box-shadow: 0px 4px 15px rgba(0,0,0,0.15);
+            box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.25); /* Sombra oscura elegante */
             z-index: 99999;
             text-decoration: none;
             font-weight: 700;
@@ -79,22 +79,22 @@ st.markdown("""
             display: flex;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(4px); /* Efecto cristal desenfocado */
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            transition: background-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+            backdrop-filter: blur(6px); /* Efecto cristal */
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
         }
         .btn-flotante-arriba:hover {
-            background-color: rgba(0, 0, 0, 0.85); /* Se vuelve oscuro al pasar el ratón/tocar */
-            color: #ffffff !important;
+            background-color: rgba(255, 255, 255, 1); /* Se vuelve blanco sólido al pasar el ratón */
             transform: scale(1.08);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0px 8px 25px rgba(0, 0, 0, 0.35);
+            color: #000000 !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- BOTÓN FLOTANTE HTML INYECTADO (SOLO FLECHA) ---
+# --- BOTÓN FLOTANTE HTML INYECTADO (MINIMALISTA) ---
 st.markdown(
-    '<a href="#top-section" class="btn-flotante-arriba" title="Volver arriba">⬆️</a>',
+    '<a href="#top-section" class="btn-flotante-arriba" title="Volver arriba">↑</a>',
     unsafe_allow_html=True
 )
 
@@ -158,7 +158,7 @@ def cargar_registros_desde_sheets():
 if "df_registros" not in st.session_state:
     st.session_state.df_registros = cargar_registros_desde_sheets()
 
-# Calcular fecha actual ajustada a España (CET/CEST)
+# Calcular fecha actual ajustada a España
 zona_espana = timezone(timedelta(hours=1))
 fecha_hoy_local = datetime.now(zona_espana).date() if hasattr(datetime, 'now') else datetime.now().date()
 
