@@ -114,7 +114,6 @@ if modo_app == "Control Lanzaderas":
         fecha_registro = st.date_input("Fecha del Registro", value=datetime.now(), key="f_lanz")
 
     with col_f2:
-        # Etiqueta perfectamente alineada con la altura de la etiqueta de st.date_input
         st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 6px; color: inherit;">Carretillero</p>', unsafe_allow_html=True)
         
         if st.session_state.modo_carr == "Seleccionar existente":
@@ -381,8 +380,8 @@ elif modo_app == "Cargas de Cliente":
         transporte = st.text_input("Número de Transporte", placeholder="Ej: TR-98765", key="num_transporte")
 
     with col_c2:
-        st.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
-        st.markdown("**Carretillero**")
+        # Etiqueta perfectamente alineada con la altura de la etiqueta de st.date_input
+        st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 6px; color: inherit;">Carretillero</p>', unsafe_allow_html=True)
         carretillero_cli = st.selectbox("Carretillero (Cliente)", carretilleros_existentes, label_visibility="collapsed", key="sel_carr_cli")
         
         num_pallets_cli = st.number_input("Número de Pallets", min_value=1, max_value=200, value=33, key="pallets_cli")
@@ -419,43 +418,4 @@ elif modo_app == "Cargas de Cliente":
             t_fin = (cf_h * 60) + cf_m
 
             if t_comienzo < t_picada or t_fin < t_comienzo:
-                st.error("⚠️ Incongruencia horaria: La hora picada debe ser anterior al comienzo, y el comienzo anterior al fin.")
-            else:
-                try:
-                    min_operacion = t_fin - t_comienzo
-                    min_espera_totales = t_fin - t_picada
-                    turno_calc_cli = calcular_turno(ci_h, ci_m)
-                    
-                    fila_cliente = [[
-                        fecha_cliente.strftime("%Y-%m-%d"),
-                        transporte.strip().upper(),
-                        f"{ph_h:02d}:{ph_m:02d}",
-                        f"{ci_h:02d}:{ci_m:02d}",
-                        f"{cf_h:02d}:{cf_m:02d}",
-                        int(min_operacion),
-                        int(min_espera_totales),
-                        int(num_pallets_cli),
-                        carretillero_cli,
-                        opcion_etiquetas,
-                        turno_calc_cli,
-                        incidencias_cli.strip() if incidencias_cli else ""
-                    ]]
-
-                    response = requests.post(WEB_APP_URL, json={"action": "update_cliente", "rows": fila_cliente})
-                    
-                    if response.status_code == 200:
-                        st.success(f"✅ ¡Carga de cliente **{transporte.upper()}** guardada en la pestaña 'Cargas de cliente'!")
-                        st.balloons()
-                        
-                        claves_cli_a_borrar = ["num_transporte", "inc_cli", "opt_etiquetas"]
-                        for clave in claves_cli_a_borrar:
-                            if clave in st.session_state:
-                                del st.session_state[clave]
-
-                        st.markdown("<script>window.location.hash = '#top-section';</script>", unsafe_allow_html=True)
-                        time.sleep(1.2)
-                        st.rerun()
-                    else:
-                        st.error(f"❌ Error al conectar con Google Sheets: {response.text}")
-                except Exception as e:
-                    st.error(f"❌ Error al procesar: {e}")
+                st.error("⚠️ Incongruencia horaria: La
