@@ -371,4 +371,17 @@ if modo_app == "Control Lanzaderas":
     st.divider()
     st.subheader("📊 Historial de Lanzaderas (En Memoria)")
     if not st.session_state.df_registros.empty:
-        st.dataframe(st
+        st.dataframe(st.session_state.df_registros, use_container_width=True)
+    else:
+        st.info("Aún no hay registros.")
+
+
+# ==============================================================================
+# SECCIÓN 2: CARGAS DE CLIENTE
+# ==============================================================================
+elif modo_app == "Cargas de Cliente":
+    st.subheader("📦 Nuevo Registro de Carga de Cliente")
+
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        fecha_cliente = st.date_input("Fecha
