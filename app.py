@@ -236,19 +236,11 @@ if modo_app == "Control Lanzaderas":
         col_tc1, col_tc2, col_tc3 = st.columns(3)
         with col_tc1:
             tipo_lanzadera = st.selectbox("Tipo de Referencia", ["P (Lanzadera)", "M (Lanzadera)", "Albarán Personalizado"], key="tipo_lanz")
-            
-            # Detectar cambio en P o M para actualizar el input al vuelo
-            if "ultimo_tipo_lanz" not in st.session_state:
-                st.session_state.ultimo_tipo_lanz = tipo_lanzadera
-            elif st.session_state.ultimo_tipo_lanz != tipo_lanzadera:
-                st.session_state.ultimo_tipo_lanz = tipo_lanzadera
-                if "input_albaran_lanz" in st.session_state:
-                    del st.session_state["input_albaran_lanz"]
-                st.rerun()
         
         str_fecha_ddmmaa = fecha_registro.strftime("%d%m%y")
         df_actual = st.session_state.df_registros
         
+        # Calcular la sugerencia que corresponde según la opción elegida
         if tipo_lanzadera in ["P (Lanzadera)", "M (Lanzadera)"]:
             letra_prefijo = "P" if tipo_lanzadera.startswith("P") else "M"
             siguiente_num = 1
@@ -258,8 +250,11 @@ if modo_app == "Control Lanzaderas":
                 siguiente_num = conteo_coincidencias + 1
             sugerencia_codigo = f"{letra_prefijo}{str_fecha_ddmmaa}-{siguiente_num}"
             
+            # Forzamos directamente la actualización del session_state para que cambie al vuelo
+            st.session_state["input_albaran_lanz"] = sugerencia_codigo
+            
             with col_tc2:
-                albaran_carga = st.text_input("Nº Albarán", value=sugerencia_codigo, key="input_albaran_lanz")
+                albaran_carga = st.text_input("Nº Albarán", key="input_albaran_lanz")
         else:
             with col_tc2:
                 albaran_carga = st.text_input("Nº Albarán", placeholder="Ej: ALB-12345", key="input_albaran_custom")
