@@ -7,7 +7,25 @@ import time
 # Configuración de la página web
 st.set_page_config(page_title="Control de Muelles - Almacén", page_icon="🚛", layout="centered")
 
-st.title("🚛 Control de Muelles y Cargas - Almacén")
+# --- ESTILOS CSS PERSONALIZADOS (FUENTE MÁS PROFESIONAL) ---
+st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        html, body, [class*="css"] {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Ajuste fino para la tipografía de los títulos principales y subtítulos */
+        h1, h2, h3 {
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# Título principal actualizado sin el camión y con el nombre corporativo
+st.title("Control de Muelles y Cargas - Azentis Persán La Red")
 st.write("Conectado a Google Sheets mediante Google Apps Script.")
 
 # --- CONFIGURACIÓN DE URL DE APPS SCRIPT ACTUALIZADA ---
