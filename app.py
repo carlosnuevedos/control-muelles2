@@ -218,7 +218,7 @@ lista_horas_prod = list(range(0, 9)) # 0 a 8 horas para producción
 st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
 
 # ==========================================
-# NAVEGACIÓN PRINCIPAL (Añadido Producción)
+# NAVEGACIÓN PRINCIPAL
 # ==========================================
 st.sidebar.title("Navegación")
 modo_app = st.sidebar.radio("Selecciona el apartado:", ["Control Lanzaderas", "Cargas de Cliente", "Producción"])
@@ -227,7 +227,6 @@ modo_app = st.sidebar.radio("Selecciona el apartado:", ["Control Lanzaderas", "C
 carretilleros_existentes = list(CARRETILLEROS_BASE)
 for df_temp in [st.session_state.df_registros, st.session_state.df_clientes, st.session_state.df_produccion]:
     if not df_temp.empty:
-        # Identificar columna de carretillero según la tabla
         idx_carr = 11 if df_temp is st.session_state.df_registros else (8 if df_temp is st.session_state.df_clientes else 3)
         if len(df_temp.columns) > idx_carr:
             col_carrs = df_temp.iloc[:, idx_carr].dropna().astype(str).str.strip().unique().tolist()
@@ -510,41 +509,59 @@ elif modo_app == "Cargas de Cliente":
 
 
 # ==============================================================================
-# SECCIÓN 3: PRODUCCIÓN (NUEVA)
+# SECCIÓN 3: PRODUCCIÓN (REORGANIZADA)
 # ==============================================================================
 elif modo_app == "Producción":
     if icono_pallet_base64:
         st.markdown(
-            f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_pallet_base64}' class='seccion-icono'> Producción</h3>", 
+            f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_pallet_base64}' class='seccion-icono'> Nuevo registro de Producción</h3>", 
             unsafe_allow_html=True
         )
     else:
-        st.subheader("📦 Producción")
+        st.subheader("📦 Nuevo registro de Producción")
 
+    # Fila 1: Fecha de Registro (izq) y Carretillero (der)
     col_p1, col_p2 = st.columns(2)
     with col_p1:
         fecha_prod = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_prod")
-        carretillero_prod = st.selectbox("Carretillero", carretilleros_existentes, key="sel_carr_prod")
-        turno_prod = st.selectbox("Turno", ["Mañana", "Tarde", "Noche"], key="sel_turno_prod")
-
     with col_p2:
+        carretillero_prod = st.selectbox("Carretillero", carretilleros_existentes, key="sel_carr_prod")
+
+    # Fila 2: Turno (izq) y hueco vacío (der)
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        turno_prod = st.selectbox("Turno", ["Mañana", "Tarde", "Noche"], key="sel_turno_prod")
+    with col_t2:
+        st.write("") # Espacio vacío para mantener la simetría de la derecha
+
+    st.markdown("#### Número de pallets")
+    
+    # Fila de Pallets: Maquilado (izq) y Chequeo (der)
+    col_pal1, col_pal2 = st.columns(2)
+    with col_pal1:
         pallets_maquilado = st.number_input("Pallets Maquilado", min_value=0, max_value=1000, value=0, key="num_p_maquilado")
+    with col_pal2:
         pallets_chequeo = st.number_input("Pallets Chequeo", min_value=0, max_value=1000, value=0, key="num_p_chequeo")
 
     st.markdown("#### Tiempo Empleado")
     
-    col_t1, col_t2 = st.columns(2)
-    with col_t1:
-        st.write("**Tiempo Maquilado:**")
+    # Tiempo Maquilado en Horizontal (Horas izq, Minutos der)
+    st.write("**Tiempo Maquilado:**")
+    col_tm1, col_tm2 = st.columns(2)
+    with col_tm1:
         tm_h = st.selectbox("Horas Maquilado", lista_horas_prod, index=0, key="tm_h")
+    with col_tm2:
         tm_m = st.selectbox("Minutos Maquilado", lista_minutos, index=0, key="tm_m")
-    
-    with col_t2:
-        st.write("**Tiempo Chequeo:**")
+
+    # Tiempo Chequeo en Horizontal (Horas izq, Minutos der)
+    st.write("**Tiempo Chequeo:**")
+    col_tc1, col_tc2 = st.columns(2)
+    with col_tc1:
         tc_h = st.selectbox("Horas Chequeo", lista_horas_prod, index=0, key="tc_h")
+    with col_tc2:
         tc_m = st.selectbox("Minutos Chequeo", lista_minutos, index=0, key="tc_m")
 
-    # Calcular total de minutos empleados para guardarlos limpios en la hoja
+    # Calcular total de minutos empleados
     minutos_maquilado_totales = (tm_h * 60) + tm_m
     minutos_chequeo_totales = (tc_h * 60) + tc_m
 
@@ -568,7 +585,6 @@ elif modo_app == "Producción":
                 st.success("✅ ¡Registro de Producción guardado correctamente!")
                 st.balloons()
                 
-                # Limpiar claves de estado si procede
                 for clave in ["num_p_maquilado", "num_p_chequeo", "tm_h", "tm_m", "tc_h", "tc_m"]:
                     if clave in st.session_state:
                         del st.session_state[clave]
