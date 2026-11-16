@@ -23,9 +23,9 @@ icono_lanzadera_base64 = convertir_imagen_a_base64("Lanzadera.png")
 icono_clientes_base64 = convertir_imagen_a_base64("Clientes.png")
 icono_pallet_base64 = convertir_imagen_a_base64("Pallet.png")
 
-# Configuración de la página web
+# Configuración de la página web (Título en la pestaña del navegador)
 st.set_page_config(
-    page_title="Control de Muelles - Azentis Persán La Red", 
+    page_title="Registro de Actividad - Azentis Persán La Red", 
     page_icon="AZENTIS-SIN-FONDO.png" if logo_base64 else "🚛", 
     layout="centered"
 )
@@ -98,7 +98,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Cabecera corporativa
+# Cabecera corporativa con el nuevo título
 col_logo, col_titulo = st.columns([0.16, 0.84])
 
 with col_logo:
@@ -111,7 +111,7 @@ with col_logo:
         st.write("🚛")
 
 with col_titulo:
-    st.markdown("<h2 style='padding-top: 2px; margin-bottom: 0px;'>Control de Muelles y Cargas</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='padding-top: 2px; margin-bottom: 0px;'>Registro de Actividad</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #555555; font-weight: 500; margin-top: 2px;'>Azentis Persán La Red • Conectado a Google Sheets</p>", unsafe_allow_html=True)
 
 st.divider()
@@ -213,7 +213,7 @@ def calcular_turno(hora, minuto):
 
 lista_horas = list(range(0, 24))
 lista_minutos = list(range(0, 60, 5))
-lista_horas_prod = list(range(0, 9)) # 0 a 8 horas para producción
+lista_horas_prod = list(range(0, 9))
 
 st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
 
@@ -509,7 +509,7 @@ elif modo_app == "Cargas de Cliente":
 
 
 # ==============================================================================
-# SECCIÓN 3: PRODUCCIÓN (REORGANIZADA)
+# SECCIÓN 3: PRODUCCIÓN
 # ==============================================================================
 elif modo_app == "Producción":
     if icono_pallet_base64:
@@ -520,23 +520,20 @@ elif modo_app == "Producción":
     else:
         st.subheader("📦 Nuevo registro de Producción")
 
-    # Fila 1: Fecha de Registro (izq) y Carretillero (der)
     col_p1, col_p2 = st.columns(2)
     with col_p1:
         fecha_prod = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_prod")
     with col_p2:
         carretillero_prod = st.selectbox("Carretillero", carretilleros_existentes, key="sel_carr_prod")
 
-    # Fila 2: Turno (izq) y hueco vacío (der)
     col_t1, col_t2 = st.columns(2)
     with col_t1:
         turno_prod = st.selectbox("Turno", ["Mañana", "Tarde", "Noche"], key="sel_turno_prod")
     with col_t2:
-        st.write("") # Espacio vacío para mantener la simetría de la derecha
+        st.write("")
 
     st.markdown("#### Número de pallets")
     
-    # Fila de Pallets: Maquilado (izq) y Chequeo (der)
     col_pal1, col_pal2 = st.columns(2)
     with col_pal1:
         pallets_maquilado = st.number_input("Pallets Maquilado", min_value=0, max_value=1000, value=0, key="num_p_maquilado")
@@ -545,7 +542,6 @@ elif modo_app == "Producción":
 
     st.markdown("#### Tiempo Empleado")
     
-    # Tiempo Maquilado en Horizontal (Horas izq, Minutos der)
     st.write("**Tiempo Maquilado:**")
     col_tm1, col_tm2 = st.columns(2)
     with col_tm1:
@@ -553,7 +549,6 @@ elif modo_app == "Producción":
     with col_tm2:
         tm_m = st.selectbox("Minutos Maquilado", lista_minutos, index=0, key="tm_m")
 
-    # Tiempo Chequeo en Horizontal (Horas izq, Minutos der)
     st.write("**Tiempo Chequeo:**")
     col_tc1, col_tc2 = st.columns(2)
     with col_tc1:
@@ -561,7 +556,6 @@ elif modo_app == "Producción":
     with col_tc2:
         tc_m = st.selectbox("Minutos Chequeo", lista_minutos, index=0, key="tc_m")
 
-    # Calcular total de minutos empleados
     minutos_maquilado_totales = (tm_h * 60) + tm_m
     minutos_chequeo_totales = (tc_h * 60) + tc_m
 
