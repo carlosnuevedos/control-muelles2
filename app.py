@@ -142,6 +142,13 @@ COLS_NECESARIAS_PRODUCCION = [
     "Pallets Maquilado", "Pallets Chequeo", "Tiempo Maquilado", "Tiempo Chequeo", "Turno"
 ]
 
+COLS_NECESARIAS_REUB = [
+    "Fecha Registro", "Turno", "Semana", "Día",
+    "Carretillero R.", "Nº Pallets Reub.",
+    "Carretillero C.", "Nº Compact.", "Tiempo Compact",
+    "Carretillero NCT", "Nº Pedido", "Nº Cajas", "Tiempo NCT"
+]
+
 # --- FUNCIONES DE CARGA ---
 def cargar_registros_lanzaderas():
     try:
@@ -191,6 +198,22 @@ def cargar_registros_produccion():
         pass
     return pd.DataFrame(columns=COLS_NECESARIAS_PRODUCCION)
 
+def cargar_registros_reub():
+    try:
+        url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
+        response = requests.post(url_fresca, json={"action": "leer_reub"})
+        if response.status_code == 200:
+            data = response.json()
+            if "rows" in data and len(data["rows"]) > 1:
+                df = pd.DataFrame(data["rows"][1:])
+                if df.shape[1] >= len(COLS_NECESARIAS_REUB):
+                    df = df.iloc[:, :len(COLS_NECESARIAS_REUB)]
+                    df.columns = COLS_NECESARIAS_REUB
+                    return df
+    except Exception:
+        pass
+    return pd.DataFrame(columns=COLS_NECESARIAS_REUB)
+
 # Cargar estados en memoria
 if "df_registros" not in st.session_state:
     st.session_state.df_registros = cargar_registros_lanzaderas()
@@ -198,6 +221,8 @@ if "df_clientes" not in st.session_state:
     st.session_state.df_clientes = cargar_registros_clientes()
 if "df_produccion" not in st.session_state:
     st.session_state.df_produccion = cargar_registros_produccion()
+if "df_reub" not in st.session_state:
+    st.session_state.df_reub = cargar_registros_reub()
 
 zona_espana = timezone(timedelta(hours=1))
 fecha_hoy_local = datetime.now(zona_espana).date() if hasattr(datetime, 'now') else datetime.now().date()
@@ -214,6 +239,7 @@ def calcular_turno(hora, minuto):
 lista_horas = list(range(0, 24))
 lista_minutos = list(range(0, 60, 5))
 lista_horas_prod = list(range(0, 9))
+lista_minutos_15 = [0, 15, 30, 45]
 
 st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
 
@@ -221,7 +247,10 @@ st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
 # NAVEGACIÓN PRINCIPAL
 # ==========================================
 st.sidebar.title("Navegación")
-modo_app = st.sidebar.radio("Selecciona el apartado:", ["Control Lanzaderas", "Cargas de Cliente", "Producción"])
+modo_app = st.sidebar.radio(
+    "Selecciona el apartado:", 
+    ["Control Lanzaderas", "Cargas de Cliente", "Producción", "Reubicaciones, Compactaciones y NCT's"]
+)
 
 # Gestión dinámica de carretilleros
 carretilleros_existentes = list(CARRETILLEROS_BASE)
@@ -598,3 +627,180 @@ elif modo_app == "Producción":
         st.dataframe(st.session_state.df_produccion.tail(5), use_container_width=True)
     else:
         st.info("Aún no hay registros en Producción.")
+
+
+# ==============================================================================
+# SECCIÓN 4: REUBICACIONES, COMPACTACIONES Y NCT's
+# ==============================================================================
+elif modo_app == "Reubicaciones, Compactaciones y NCT's":
+    st.subheader("🔄 Reubicaciones, Compactaciones y NCT's")
+
+    # --- SECCIÓN GENERAL ---
+    st.markdown("#### Datos Generales")
+    col_gen1, col_gen2 = st.columns(2)
+    with col_gen1:
+        fecha_reub = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_reub")
+    with col_gen2:
+        turno_reub = st.selectbox("Turno", ["Mañana", "Tarde", "Noche"], key="sel_turno_reub")
+
+    st.divider()
+
+    # --- SUBAPARTADO 1: REUBICACIONES ---
+    st.markdown("#### 1. Reubicaciones")
+    col_r1, col_r2 = st.columns(2)
+    with col_r1:
+        carrs_reub = st.multiselect(
+            "Carretillero(s) Reubicaciones", 
+            carretilleros_existentes, 
+            placeholder="Selecciona uno o varios",
+            key="multi_carr_reub"
+        )
+    with col_r2:
+        num_pallets_reub = st.number_input("Nº de Pallets", min_value=0, max_value=1000, value=0, key="num_p_reub")
+
+    st.divider()
+
+    # --- SUBAPARTADO 2: COMPACTACIONES ---
+    st.markdown("#### 2. Compactaciones")
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        carrs_comp = st.multiselect(
+            "Carretillero(s) Compactaciones", 
+            carretilleros_existentes, 
+            placeholder="Selecciona uno o varios",
+            key="multi_carr_comp"
+        )
+    with col_c2:
+        num_compactaciones = st.number_input("Nº de Compactaciones", min_value=0, max_value=1000, value=0, key="num_comp")
+
+    st.write("**Tiempo en Operación (Compactaciones):**")
+    col_tc_h, col_tc_m = st.columns(2)
+    with col_tc_h:
+        comp_h = st.selectbox("Horas (Compact.)", lista_horas_prod, index=0, key="comp_h")
+    with col_tc_m:
+        comp_m = st.selectbox("Minutos (Compact.)", lista_minutos_15, index=0, key="comp_m")
+
+    minutos_compact_totales = (comp_h * 60) + comp_m
+
+    st.divider()
+
+    # --- SUBAPARTADO 3: NCT'S ---
+    st.markdown("#### 3. NCT's")
+    if "num_ncts" not in st.session_state:
+        st.session_state.num_ncts = 1
+
+    datos_ncts = []
+    for i in range(st.session_state.num_ncts):
+        if st.session_state.num_ncts > 1:
+            st.markdown(f"**NCT #{i + 1}**")
+        
+        col_n1, col_n2, col_n3 = st.columns(3)
+        with col_n1:
+            pedido_nct = st.text_input("Nº de Pedido", placeholder="Ej: PED-1234", key=f"ped_nct_{i}")
+        with col_n2:
+            carr_nct = st.selectbox("Carretillero", [""] + carretilleros_existentes, key=f"carr_nct_{i}")
+        with col_n3:
+            cajas_nct = st.number_input("Nº de Cajas", min_value=0, max_value=5000, value=0, key=f"cajas_nct_{i}")
+
+        col_nh, col_nm = st.columns(2)
+        with col_nh:
+            nct_h = st.selectbox("Horas Operación (NCT)", lista_horas_prod, index=0, key=f"nct_h_{i}")
+        with col_nm:
+            nct_m = st.selectbox("Minutos Operación (NCT)", lista_minutos_15, index=0, key=f"nct_m_{i}")
+
+        minutos_nct_totales = (nct_h * 60) + nct_m
+
+        datos_ncts.append({
+            "pedido": pedido_nct.strip(),
+            "carretillero": carr_nct,
+            "cajas": int(cajas_nct),
+            "tiempo": int(minutos_nct_totales)
+        })
+
+        if i < st.session_state.num_ncts - 1:
+            st.markdown("---")
+
+    col_btn_nct1, col_btn_nct2 = st.columns([0.4, 0.6])
+    with col_btn_nct1:
+        if st.button("➕ Añadir nueva NCT", key="btn_add_nct"):
+            st.session_state.num_ncts += 1
+            st.rerun()
+    with col_btn_nct2:
+        if st.session_state.num_ncts > 1:
+            if st.button("➖ Quitar última NCT", key="btn_del_nct"):
+                st.session_state.num_ncts -= 1
+                st.rerun()
+
+    st.divider()
+
+    submitted_reub = st.button("Guardar Registro (Reub, Comp y NCT's)")
+
+    if submitted_reub:
+        try:
+            str_carrs_reub = ", ".join(carrs_reub)
+            str_carrs_comp = ", ".join(carrs_comp)
+            fecha_str = fecha_reub.strftime("%Y-%m-%d")
+
+            filas_a_enviar = []
+
+            # Primera fila: incluye datos de Reubicaciones, Compactaciones y la primera NCT (si tiene datos)
+            primera_nct = datos_ncts[0]
+            tiene_nct_0 = bool(primera_nct["pedido"] or primera_nct["carretillero"] or primera_nct["cajas"] > 0 or primera_nct["tiempo"] > 0)
+
+            filas_a_enviar.append([
+                fecha_str,
+                turno_reub,
+                str_carrs_reub,
+                int(num_pallets_reub) if (str_carrs_reub or num_pallets_reub > 0) else "",
+                str_carrs_comp,
+                int(num_compactaciones) if (str_carrs_comp or num_compactaciones > 0) else "",
+                int(minutos_compact_totales) if (str_carrs_comp or num_compactaciones > 0 or minutos_compact_totales > 0) else "",
+                primera_nct["carretillero"] if tiene_nct_0 else "",
+                primera_nct["pedido"] if tiene_nct_0 else "",
+                primera_nct["cajas"] if tiene_nct_0 else "",
+                primera_nct["tiempo"] if tiene_nct_0 else ""
+            ])
+
+            # Filas adicionales (NCT #2 en adelante): repiten Fecha y Turno, dejan Reub/Comp vacíos
+            for extra_nct in datos_ncts[1:]:
+                if extra_nct["pedido"] or extra_nct["carretillero"] or extra_nct["cajas"] > 0 or extra_nct["tiempo"] > 0:
+                    filas_a_enviar.append([
+                        fecha_str,
+                        turno_reub,
+                        "", "", "", "", "",
+                        extra_nct["carretillero"],
+                        extra_nct["pedido"],
+                        extra_nct["cajas"],
+                        extra_nct["tiempo"]
+                    ])
+
+            response = requests.post(WEB_APP_URL, json={"action": "update_reub", "rows": filas_a_enviar})
+
+            if response.status_code == 200:
+                st.success("✅ ¡Registro guardado correctamente en Google Sheets!")
+                st.balloons()
+
+                # Limpiar campos del formulario
+                claves_limpiar = ["multi_carr_reub", "num_p_reub", "multi_carr_comp", "num_comp", "comp_h", "comp_m"]
+                for i in range(st.session_state.num_ncts):
+                    claves_limpiar.extend([f"ped_nct_{i}", f"carr_nct_{i}", f"cajas_nct_{i}", f"nct_h_{i}", f"nct_m_{i}"])
+                for c in claves_limpiar:
+                    if c in st.session_state:
+                        del st.session_state[c]
+                st.session_state.num_ncts = 1
+
+                st.session_state.df_reub = cargar_registros_reub()
+                st.query_params["recarga"] = str(time.time())
+                time.sleep(0.5)
+                st.rerun()
+            else:
+                st.error(f"❌ Error al conectar con Google Sheets: {response.text}")
+        except Exception as e:
+            st.error(f"❌ Error al procesar: {e}")
+
+    st.divider()
+    st.subheader("📊 Últimos 5 Registros (Reub, Comp y NCT's)")
+    if not st.session_state.df_reub.empty:
+        st.dataframe(st.session_state.df_reub.tail(5), use_container_width=True)
+    else:
+        st.info("Aún no hay registros en este apartado.")
