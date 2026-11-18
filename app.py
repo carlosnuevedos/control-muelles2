@@ -125,41 +125,30 @@ CARRETILLEROS_BASE = [
     "Raúl", "Álvaro", "Daniel", "J. A. Lara", "J. A. Vega", "Sergio", "Samuel"
 ]
 
-# ESTRUCTURAS EXACTAS POR HOJA
-COLS_NECESARIAS_LANZADERAS = [
-    "Fecha Registro", "Mes", "Matrícula", "Albarán", "Operación",
-    "Hora Llegada", "Hora Inicio", "Hora Fin", 
-    "Min. Espera", "Min. Operación", "Min. Totales",
-    "Pallets", "Carretillero", "Turno", "Incidencias", "Semana", "Día"
-]
-
-COLS_NECESARIAS_CLIENTES = [
-    "Fecha Registro", "Mes", "Nº Transporte", "H. Picada", "H. Comienzo", 
-    "Hora Fin", "Min. Operación", "Min. Espera totales", "Pallets", 
-    "Carretillero", "¿Etiquetas?", "Turno", "Incidencia", "Semana", "Día"
-]
-
-COLS_NECESARIAS_PRODUCCION = [
-    "Fecha Registro", "Mes", "Día", "Semana", "Carretillero", 
-    "Pallets Maquilado", "Pallets Chequeo", "Tiempo Maquilado", "Tiempo Chequeo", "Turno"
-]
-
-COLS_NECESARIAS_REUB = [
-    "Fecha Registro", "Mes", "Turno", "Semana", "Día",
-    "Carretillero R.", "Nº Pallets Reub.",
-    "Carretillero C.", "Nº Compact.", "Tiempo Compact",
-    "Carretillero NCT", "Nº Pedido", "Nº Cajas", "Tiempo NCT"
-]
-
-# --- FUNCIONES AUXILIARES DE LECTURA (DATOS EMPIEZAN EN FILA 5 -> ÍNDICE 4) ---
-def procesar_filas_hoja(raw_rows, cols_esperadas):
-    if not raw_rows or len(raw_rows) <= 4:
-        return pd.DataFrame(columns=cols_esperadas)
-    datos_validos = [r[:len(cols_esperadas)] for r in raw_rows[4:] if len(r) > 0 and str(r[0]).strip() != ""]
+# --- FUNCIÓN INTELIGENTE: LEE LAS CABECERAS REALES DE LA FILA 4 EN TIEMPO REAL ---
+def procesar_filas_hoja(raw_rows):
+    if not raw_rows or len(raw_rows) <= 3:
+        return pd.DataFrame()
+    
+    # Extraer las cabeceras reales de la fila 4 (índice 3 de la matriz)
+    cabeceras = [str(h).strip() for h in raw_rows[3] if str(h).strip() != ""]
+    if not cabeceras:
+        return pd.DataFrame()
+    
+    filas_datos = raw_rows[4:] # Los datos empiezan en la fila 5 (índice 4)
+    datos_validos = []
+    
+    for r in filas_datos:
+        if len(r) > 0 and any(str(cell).strip() != "" for cell in r):
+            # Recortar o rellenar la fila según el número de columnas con cabecera
+            fila_recortada = r[:len(cabeceras)]
+            fila_normalizada = fila_recortada + [""] * (len(cabeceras) - len(fila_recortada))
+            datos_validos.append(fila_normalizada)
+            
     if not datos_validos:
-        return pd.DataFrame(columns=cols_esperadas)
-    datos_normalizados = [r + [""] * (len(cols_esperadas) - len(r)) for r in datos_validos]
-    return pd.DataFrame(datos_normalizados, columns=cols_esperadas)
+        return pd.DataFrame(columns=cabeceras)
+        
+    return pd.DataFrame(datos_validos, columns=cabeceras)
 
 def cargar_registros_lanzaderas():
     try:
@@ -167,10 +156,10 @@ def cargar_registros_lanzaderas():
         response = requests.post(url_fresca, json={"action": "leer"})
         if response.status_code == 200:
             data = response.json()
-            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_LANZADERAS)
+            return procesar_filas_hoja(data.get("rows", []))
     except Exception:
         pass
-    return pd.DataFrame(columns=COLS_NECESARIAS_LANZADERAS)
+    return pd.DataFrame()
 
 def cargar_registros_clientes():
     try:
@@ -178,10 +167,10 @@ def cargar_registros_clientes():
         response = requests.post(url_fresca, json={"action": "leer_clientes"})
         if response.status_code == 200:
             data = response.json()
-            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_CLIENTES)
+            return procesar_filas_hoja(data.get("rows", []))
     except Exception:
         pass
-    return pd.DataFrame(columns=COLS_NECESARIAS_CLIENTES)
+    return pd.DataFrame()
 
 def cargar_registros_produccion():
     try:
@@ -189,10 +178,10 @@ def cargar_registros_produccion():
         response = requests.post(url_fresca, json={"action": "leer_produccion"})
         if response.status_code == 200:
             data = response.json()
-            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_PRODUCCION)
+            return procesar_filas_hoja(data.get("rows", []))
     except Exception:
         pass
-    return pd.DataFrame(columns=COLS_NECESARIAS_PRODUCCION)
+    return pd.DataFrame()
 
 def cargar_registros_reub():
     try:
@@ -200,10 +189,10 @@ def cargar_registros_reub():
         response = requests.post(url_fresca, json={"action": "leer_reub"})
         if response.status_code == 200:
             data = response.json()
-            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_REUB)
+            return procesar_filas_hoja(data.get("rows", []))
     except Exception:
         pass
-    return pd.DataFrame(columns=COLS_NECESARIAS_REUB)
+    return pd.DataFrame()
 
 # Cargar estados en memoria
 if "df_registros" not in st.session_state:
@@ -397,7 +386,7 @@ if modo_app == "Control Lanzaderas":
         with ci_im: c_inicio_m = st.selectbox("Minutos Inicio (Carga)", lista_minutos, index=0, key="ci_im")
         cf_h, cf_fm = st.columns(2)
         with cf_h: c_fin_h = st.selectbox("Hora Fin (Carga)", lista_horas, index=9, key="cf_h")
-        with cf_fm: c_fin_m = st.selectbox("Minutos Fin (Carga)", lista_minutos, index=0, key="cf_m")
+        with cf_fm: c_fin_m = st.selectbox("Minutos Fin (Carga)", lista_minutos, index=0, key="cf_fm")
 
         t_lleg_c = (c_llegada_h * 60) + c_llegada_m
         t_ini_c = (c_inicio_h * 60) + c_inicio_m
