@@ -156,11 +156,9 @@ def procesar_filas_hoja(raw_rows, cols_esperadas):
     if not raw_rows or len(raw_rows) <= 4:
         return pd.DataFrame(columns=cols_esperadas)
     
-    # Tomamos las filas desde la fila 5 en adelante (índice 4)
     datos_validos = []
     for r in raw_rows[4:]:
         if len(r) > 0 and str(r[0]).strip() != "":
-            # Aseguramos que la fila tenga suficientes elementos rellenando con ""
             fila_normalizada = list(r) + [""] * (len(cols_esperadas) - len(r))
             datos_validos.append(fila_normalizada[:len(cols_esperadas)])
             
@@ -287,7 +285,7 @@ if modo_app == "Control Lanzaderas":
     if not st.session_state.df_registros.empty and "Matrícula" in st.session_state.df_registros.columns:
         matriculas_guardadas = sorted([
             m for m in st.session_state.df_registros["Matrícula"].dropna().astype(str).str.strip().unique().tolist()
-            if m and m != "Matrícula" and m.lower() != "noviembre" and m.lower() != "octubre"
+            if m and m != "Matrícula" and m.lower() not in ["noviembre", "octubre", "diciembre", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre"]
         ])
 
     col_f1, col_f2 = st.columns(2)
@@ -520,7 +518,7 @@ elif modo_app == "Cargas de Cliente":
 
     c_cf1, c_cf2 = st.columns(2)
     with c_cf1: cf_h = st.selectbox("Hora Fin", lista_horas, index=9, key="cf_cli_h")
-    with c_cf2: cf_m = st.selectbox("Minutos Fin", lista_minutos, index=0, key="cf_m")
+    with c_cf2: cf_m = st.selectbox("Minutos Fin", lista_minutos, index=0, key="cf_cli_m")
 
     opcion_etiquetas = st.selectbox("¿Lleva etiquetas?", ["", "Sí", "No"], key="opt_etiquetas")
     incidencias_cli = st.text_area("Incidencias (opcional)", key="inc_cli")
@@ -855,7 +853,7 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
             else:
                 st.error(f"❌ Error al conectar con Google Sheets: {response.text}")
         except Exception as e:
-            st.error(f>❌ Error al procesar: {e}")
+            st.error(f"❌ Error al procesar: {e}")
 
     st.divider()
     st.subheader("📊 Últimos 5 Registros (Reub, Comp y NCT's)")
