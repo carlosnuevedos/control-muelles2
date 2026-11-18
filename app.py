@@ -33,12 +33,16 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- SCROLL AUTOMÁTICO ARRIBA TRAS GUARDAR ---
+# --- SCROLL AUTOMÁTICO ARRIBA TRAS GUARDAR (ROBUSTO) ---
 if st.session_state.get("scroll_top", False):
     components.html(
         """
         <script>
-            window.parent.document.querySelector('section.main').scrollTo({top: 0, behavior: 'smooth'});
+            try {
+                window.parent.scrollTo({top: 0, behavior: 'smooth'});
+                var mainEl = window.parent.document.querySelector('section.main') || window.parent.document.querySelector('.main') || window.parent.document.documentElement;
+                if (mainEl) mainEl.scrollTo({top: 0, behavior: 'smooth'});
+            } catch(e) {}
         </script>
         """,
         height=0
@@ -433,8 +437,18 @@ if modo_app == "Control Lanzaderas":
                 if response.status_code == 200:
                     st.success(f"✅ ¡Guardado en Google Sheets para **{matricula.upper()}**!")
                     st.balloons()
-                    for c in ["input_nueva_mat_lanz", "alb_desc", "input_albaran_lanz", "input_albaran_custom", "chk_descarga", "chk_carga", "incidencias_input_lanz"]:
+                    
+                    # Limpiar todas las claves de session_state de esta sección
+                    claves_lanz = [
+                        "f_lanz", "select_carretillero_existente_lanz", "input_nuevo_carr_lanz", "radio_modo_carr_lanz",
+                        "select_mat_existente_lanz", "input_nueva_mat_lanz", "radio_modo_mat_lanz", "chk_descarga",
+                        "alb_desc", "opt_p_desc", "p_desc_otro", "dl_h", "dl_m", "di_h", "di_m", "df_h", "df_m",
+                        "chk_carga", "tipo_lanz", "input_albaran_lanz", "input_albaran_custom", "opt_p_carg", "p_carg_otro",
+                        "cl_h", "cl_m", "ci_h", "ci_m", "cf_h", "cf_m", "incidencias_input_lanz", "modo_mat", "modo_carr_lanz"
+                    ]
+                    for c in claves_lanz:
                         if c in st.session_state: del st.session_state[c]
+
                     st.session_state.df_registros = cargar_registros_lanzaderas()
                     st.session_state.scroll_top = True
                     st.query_params["recarga"] = str(time.time())
@@ -522,8 +536,15 @@ elif modo_app == "Cargas de Cliente":
                 if response.status_code == 200:
                     st.success(f"✅ ¡Carga de cliente **{transporte.upper()}** guardada!")
                     st.balloons()
-                    for c in ["num_transporte", "inc_cli", "opt_etiquetas", "num_p_cli", "ph_h", "ph_m", "ci_cli_h", "ci_cli_m", "cf_cli_h", "cf_cli_m"]:
+                    
+                    claves_cli = [
+                        "f_cli", "num_transporte", "sel_carr_cli", "input_nuevo_carr_cli", "radio_modo_carr_cli",
+                        "num_p_cli", "ph_h", "ph_m", "ci_cli_h", "ci_cli_m", "cf_cli_h", "cf_cli_m",
+                        "opt_etiquetas", "inc_cli", "modo_carr_cli"
+                    ]
+                    for c in claves_cli:
                         if c in st.session_state: del st.session_state[c]
+
                     st.session_state.df_clientes = cargar_registros_clientes()
                     st.session_state.scroll_top = True
                     st.query_params["recarga"] = str(time.time())
@@ -613,8 +634,14 @@ elif modo_app == "Producción":
             if response.status_code == 200:
                 st.success("✅ ¡Registro de Producción guardado correctamente!")
                 st.balloons()
-                for clave in ["num_p_maquilado", "num_p_chequeo", "tm_h", "tm_m", "tc_h", "tc_m"]:
-                    if clave in st.session_state: del st.session_state[clave]
+                
+                claves_prod = [
+                    "f_prod", "sel_carr_prod", "input_nuevo_carr_prod", "radio_modo_carr_prod",
+                    "sel_turno_prod", "num_p_maquilado", "num_p_chequeo", "tm_h", "tm_m", "tc_h", "tc_m", "modo_carr_prod"
+                ]
+                for c in claves_prod:
+                    if c in st.session_state: del st.session_state[c]
+
                 st.session_state.df_produccion = cargar_registros_produccion()
                 st.session_state.scroll_top = True
                 st.query_params["recarga"] = str(time.time())
@@ -786,7 +813,11 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
                     st.success("✅ ¡Registro guardado correctamente en Google Sheets!")
                     st.balloons()
 
-                    claves_limpiar = ["chk_reub", "multi_carr_reub", "num_p_reub", "chk_comp", "multi_carr_comp", "num_comp", "comp_h", "comp_m", "chk_nct"]
+                    claves_limpiar = [
+                        "f_reub", "sel_turno_reub", "chk_reub", "multi_carr_reub", "num_p_reub",
+                        "chk_comp", "multi_carr_comp", "num_comp", "comp_h", "comp_m", "chk_nct",
+                        "input_nuevo_carr_gen"
+                    ]
                     if "num_ncts" in st.session_state:
                         for i in range(st.session_state.num_ncts):
                             claves_limpiar.extend([f"ped_nct_{i}", f"carr_nct_{i}", f"cajas_nct_{i}", f"nct_h_{i}", f"nct_m_{i}"])
@@ -935,9 +966,11 @@ elif modo_app == "Preparación Cargas":
                     st.balloons()
                     
                     claves_limpiar = [
+                        "f_prep_cargas", "turno_prep_cargas",
                         "chk_prep_cli", "multi_carr_prep_cli", "h_prep_cli", "m_prep_cli", "num_p_prep_cli_val", "sel_reenfardar", "num_p_reenf_val",
                         "chk_prep_mail", "multi_carr_prep_mail", "h_prep_mail", "m_prep_mail", "num_p_prep_mail_val",
-                        "chk_prep_persan", "multi_carr_prep_persan", "h_prep_persan", "m_prep_persan", "num_p_prep_persan_val"
+                        "chk_prep_persan", "multi_carr_prep_persan", "h_prep_persan", "m_prep_persan", "num_p_prep_persan_val",
+                        "inp_carr_prep_gen"
                     ]
                     for c in claves_limpiar:
                         if c in st.session_state: del st.session_state[c]
