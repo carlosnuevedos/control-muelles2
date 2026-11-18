@@ -22,6 +22,7 @@ logo_base64 = convertir_imagen_a_base64("AZENTIS-SIN-FONDO.png")
 icono_lanzadera_base64 = convertir_imagen_a_base64("Lanzadera.png")
 icono_clientes_base64 = convertir_imagen_a_base64("Clientes.png")
 icono_pallet_base64 = convertir_imagen_a_base64("Pallet.png")
+icono_carretilla_base64 = convertir_imagen_a_base64("Carretilla.png")
 
 # Configuración de la página web
 st.set_page_config(
@@ -677,7 +678,13 @@ elif modo_app == "Producción":
 # SECCIÓN 4: REUBICACIONES, COMPACTACIONES Y NCT'S
 # ==============================================================================
 elif modo_app == "Reubicaciones, Compactaciones y NCT's":
-    st.subheader("🔄 Reubicaciones, Compactaciones y NCT's")
+    if icono_carretilla_base64:
+        st.markdown(
+            f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_carretilla_base64}' class='seccion-icono'> Reubicaciones, Compactaciones y NCT's</h3>", 
+            unsafe_allow_html=True
+        )
+    else:
+        st.subheader("🔄 Reubicaciones, Compactaciones y NCT's")
 
     carretilleros_actuales = obtener_lista_carretilleros()
 
