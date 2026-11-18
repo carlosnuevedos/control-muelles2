@@ -125,30 +125,49 @@ CARRETILLEROS_BASE = [
     "Raúl", "Álvaro", "Daniel", "J. A. Lara", "J. A. Vega", "Sergio", "Samuel"
 ]
 
-# --- FUNCIÓN INTELIGENTE: LEE LAS CABECERAS REALES DE LA FILA 4 EN TIEMPO REAL ---
-def procesar_filas_hoja(raw_rows):
-    if not raw_rows or len(raw_rows) <= 3:
-        return pd.DataFrame()
+# ESTRUCTURAS EXACTAS POR HOJA
+COLS_NECESARIAS_LANZADERAS = [
+    "Fecha Registro", "Mes", "Matrícula", "Albarán", "Operación",
+    "Hora Llegada", "Hora Inicio", "Hora Fin", 
+    "Min. Espera", "Min. Operación", "Min. Totales",
+    "Pallets", "Carretillero", "Turno", "Incidencias", "Semana", "Día"
+]
+
+COLS_NECESARIAS_CLIENTES = [
+    "Fecha Registro", "Mes", "Nº Transporte", "H. Picada", "H. Comienzo", 
+    "Hora Fin", "Min. Operación", "Min. Espera totales", "Pallets", 
+    "Carretillero", "¿Etiquetas?", "Turno", "Incidencia", "Semana", "Día"
+]
+
+COLS_NECESARIAS_PRODUCCION = [
+    "Fecha Registro", "Mes", "Día", "Semana", "Carretillero", 
+    "Pallets Maquilado", "Pallets Chequeo", "Tiempo Maquilado", "Tiempo Chequeo", "Turno"
+]
+
+COLS_NECESARIAS_REUB = [
+    "Fecha Registro", "Mes", "Turno", "Semana", "Día",
+    "Carretillero R.", "Nº Pallets Reub.",
+    "Carretillero C.", "Nº Compact.", "Tiempo Compact",
+    "Carretillero NCT", "Nº Pedido", "Nº Cajas", "Tiempo NCT"
+]
+
+# --- FUNCIONES DE LECTURA ROBUSTAS (DESDE FILA 5 -> ÍNDICE 4) ---
+def procesar_filas_hoja(raw_rows, cols_esperadas):
+    if not raw_rows or len(raw_rows) <= 4:
+        return pd.DataFrame(columns=cols_esperadas)
     
-    # Extraer las cabeceras reales de la fila 4 (índice 3 de la matriz)
-    cabeceras = [str(h).strip() for h in raw_rows[3] if str(h).strip() != ""]
-    if not cabeceras:
-        return pd.DataFrame()
-    
-    filas_datos = raw_rows[4:] # Los datos empiezan en la fila 5 (índice 4)
+    # Tomamos las filas desde la fila 5 en adelante (índice 4)
     datos_validos = []
-    
-    for r in filas_datos:
-        if len(r) > 0 and any(str(cell).strip() != "" for cell in r):
-            # Recortar o rellenar la fila según el número de columnas con cabecera
-            fila_recortada = r[:len(cabeceras)]
-            fila_normalizada = fila_recortada + [""] * (len(cabeceras) - len(fila_recortada))
-            datos_validos.append(fila_normalizada)
+    for r in raw_rows[4:]:
+        if len(r) > 0 and str(r[0]).strip() != "":
+            # Aseguramos que la fila tenga suficientes elementos rellenando con ""
+            fila_normalizada = list(r) + [""] * (len(cols_esperadas) - len(r))
+            datos_validos.append(fila_normalizada[:len(cols_esperadas)])
             
     if not datos_validos:
-        return pd.DataFrame(columns=cabeceras)
+        return pd.DataFrame(columns=cols_esperadas)
         
-    return pd.DataFrame(datos_validos, columns=cabeceras)
+    return pd.DataFrame(datos_validos, columns=cols_esperadas)
 
 def cargar_registros_lanzaderas():
     try:
@@ -156,10 +175,10 @@ def cargar_registros_lanzaderas():
         response = requests.post(url_fresca, json={"action": "leer"})
         if response.status_code == 200:
             data = response.json()
-            return procesar_filas_hoja(data.get("rows", []))
+            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_LANZADERAS)
     except Exception:
         pass
-    return pd.DataFrame()
+    return pd.DataFrame(columns=COLS_NECESARIAS_LANZADERAS)
 
 def cargar_registros_clientes():
     try:
@@ -167,10 +186,10 @@ def cargar_registros_clientes():
         response = requests.post(url_fresca, json={"action": "leer_clientes"})
         if response.status_code == 200:
             data = response.json()
-            return procesar_filas_hoja(data.get("rows", []))
+            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_CLIENTES)
     except Exception:
         pass
-    return pd.DataFrame()
+    return pd.DataFrame(columns=COLS_NECESARIAS_CLIENTES)
 
 def cargar_registros_produccion():
     try:
@@ -178,10 +197,10 @@ def cargar_registros_produccion():
         response = requests.post(url_fresca, json={"action": "leer_produccion"})
         if response.status_code == 200:
             data = response.json()
-            return procesar_filas_hoja(data.get("rows", []))
+            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_PRODUCCION)
     except Exception:
         pass
-    return pd.DataFrame()
+    return pd.DataFrame(columns=COLS_NECESARIAS_PRODUCCION)
 
 def cargar_registros_reub():
     try:
@@ -189,10 +208,10 @@ def cargar_registros_reub():
         response = requests.post(url_fresca, json={"action": "leer_reub"})
         if response.status_code == 200:
             data = response.json()
-            return procesar_filas_hoja(data.get("rows", []))
+            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_REUB)
     except Exception:
         pass
-    return pd.DataFrame()
+    return pd.DataFrame(columns=COLS_NECESARIAS_REUB)
 
 # Cargar estados en memoria
 if "df_registros" not in st.session_state:
@@ -268,7 +287,7 @@ if modo_app == "Control Lanzaderas":
     if not st.session_state.df_registros.empty and "Matrícula" in st.session_state.df_registros.columns:
         matriculas_guardadas = sorted([
             m for m in st.session_state.df_registros["Matrícula"].dropna().astype(str).str.strip().unique().tolist()
-            if m and m != "Matrícula"
+            if m and m != "Matrícula" and m.lower() != "noviembre" and m.lower() != "octubre"
         ])
 
     col_f1, col_f2 = st.columns(2)
@@ -836,7 +855,7 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
             else:
                 st.error(f"❌ Error al conectar con Google Sheets: {response.text}")
         except Exception as e:
-            st.error(f"❌ Error al procesar: {e}")
+            st.error(f>❌ Error al procesar: {e}")
 
     st.divider()
     st.subheader("📊 Últimos 5 Registros (Reub, Comp y NCT's)")
