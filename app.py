@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from datetime import datetime, timezone, timedelta
 import pandas as pd
 import requests
@@ -31,6 +32,18 @@ st.set_page_config(
     page_icon="AZENTIS-SIN-FONDO.png" if logo_base64 else "🚛", 
     layout="centered"
 )
+
+# --- SCROLL AUTOMÁTICO ARRIBA TRAS GUARDAR ---
+if st.session_state.get("scroll_top", False):
+    components.html(
+        """
+        <script>
+            window.parent.document.querySelector('section.main').scrollTo({top: 0, behavior: 'smooth'});
+        </script>
+        """,
+        height=0
+    )
+    st.session_state.scroll_top = False
 
 # --- ESTILOS CSS PERSONALIZADOS ---
 st.markdown("""
@@ -258,7 +271,7 @@ modo_app = st.sidebar.radio(
 # ==============================================================================
 # SECCIÓN 1: CONTROL DE LANZADERAS
 # ==============================================================================
-elif modo_app == "Control Lanzaderas":
+if modo_app == "Control Lanzaderas":
     if icono_lanzadera_base64:
         st.markdown(f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_lanzadera_base64}' class='seccion-icono'> Nuevo Registro de Vehículo (Lanzaderas)</h3>", unsafe_allow_html=True)
     else:
@@ -423,6 +436,7 @@ elif modo_app == "Control Lanzaderas":
                     for c in ["input_nueva_mat_lanz", "alb_desc", "input_albaran_lanz", "input_albaran_custom", "chk_descarga", "chk_carga", "incidencias_input_lanz"]:
                         if c in st.session_state: del st.session_state[c]
                     st.session_state.df_registros = cargar_registros_lanzaderas()
+                    st.session_state.scroll_top = True
                     st.query_params["recarga"] = str(time.time())
                     time.sleep(0.5)
                     st.rerun()
@@ -508,9 +522,10 @@ elif modo_app == "Cargas de Cliente":
                 if response.status_code == 200:
                     st.success(f"✅ ¡Carga de cliente **{transporte.upper()}** guardada!")
                     st.balloons()
-                    for c in ["num_transporte", "inc_cli", "opt_etiquetas", "num_p_cli"]:
+                    for c in ["num_transporte", "inc_cli", "opt_etiquetas", "num_p_cli", "ph_h", "ph_m", "ci_cli_h", "ci_cli_m", "cf_cli_h", "cf_cli_m"]:
                         if c in st.session_state: del st.session_state[c]
                     st.session_state.df_clientes = cargar_registros_clientes()
+                    st.session_state.scroll_top = True
                     st.query_params["recarga"] = str(time.time())
                     time.sleep(0.5)
                     st.rerun()
@@ -601,6 +616,7 @@ elif modo_app == "Producción":
                 for clave in ["num_p_maquilado", "num_p_chequeo", "tm_h", "tm_m", "tc_h", "tc_m"]:
                     if clave in st.session_state: del st.session_state[clave]
                 st.session_state.df_produccion = cargar_registros_produccion()
+                st.session_state.scroll_top = True
                 st.query_params["recarga"] = str(time.time())
                 time.sleep(0.5)
                 st.rerun()
@@ -740,7 +756,6 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
                 fecha_str = fecha_reub.strftime("%Y-%m-%d")
                 filas_a_enviar = []
 
-                # Construir la primera línea base
                 primera_nct = datos_ncts[0] if (activar_nct and datos_ncts) else {"pedido": "", "carretillero": "", "cajas": 0, "tiempo": 0}
                 tiene_nct_0 = bool(primera_nct["pedido"] or primera_nct["carretillero"] or primera_nct["cajas"] > 0 or primera_nct["tiempo"] > 0)
 
@@ -758,7 +773,6 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
                     primera_nct["tiempo"] if tiene_nct_0 else ""
                 ])
 
-                # Si hay más NCTs adicionales
                 if activar_nct:
                     for extra_nct in datos_ncts[1:]:
                         if extra_nct["pedido"] or extra_nct["carretillero"] or extra_nct["cajas"] > 0 or extra_nct["tiempo"] > 0:
@@ -782,6 +796,7 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
                         if c in st.session_state: del st.session_state[c]
 
                     st.session_state.df_reub = cargar_registros_reub()
+                    st.session_state.scroll_top = True
                     st.query_params["recarga"] = str(time.time())
                     time.sleep(0.5)
                     st.rerun()
@@ -833,7 +848,7 @@ elif modo_app == "Preparación Cargas":
         with col_tc_m: m_prep_cli = st.selectbox("Minutos en Operación (Cargas Cliente)", lista_minutos_15, index=0, key="m_prep_cli")
         tiempo_prep_cli_totales = (h_prep_cli * 60) + m_prep_cli
 
-        num_p_cli_prep = st.number_input("Nº de Pallets (Cargas Cliente)", min_value=0, max_value=500, value=33, key="num_p_prep_cli_val")
+        num_p_cli_prep = st.number_input("Nº de Pallets (Cargas Cliente)", min_value=0, max_value=500, value=0, key="num_p_prep_cli_val")
 
         reenfardar = st.selectbox("¿Se reenfardan/reetiquetan pallets?", ["No", "Sí"], key="sel_reenfardar")
         if reenfardar == "Sí":
@@ -856,7 +871,7 @@ elif modo_app == "Preparación Cargas":
         with col_tm_m: m_prep_mail = st.selectbox("Minutos en Operación (Mailing)", lista_minutos_15, index=0, key="m_prep_mail")
         tiempo_prep_mail_totales = (h_prep_mail * 60) + m_prep_mail
 
-        num_p_mail_prep = st.number_input("Nº de Pallets (Mailing)", min_value=0, max_value=500, value=33, key="num_p_prep_mail_val")
+        num_p_mail_prep = st.number_input("Nº de Pallets (Mailing)", min_value=0, max_value=500, value=0, key="num_p_prep_mail_val")
 
     st.divider()
 
@@ -875,7 +890,7 @@ elif modo_app == "Preparación Cargas":
         with col_tp_m: m_prep_persan = st.selectbox("Minutos en Operación (Persán)", lista_minutos_15, index=0, key="m_prep_persan")
         tiempo_prep_persan_totales = (h_prep_persan * 60) + m_prep_persan
 
-        num_p_persan_prep = st.number_input("Nº de Pallets (Persán)", min_value=0, max_value=500, value=33, key="num_p_prep_persan_val")
+        num_p_persan_prep = st.number_input("Nº de Pallets (Persán)", min_value=0, max_value=500, value=0, key="num_p_prep_persan_val")
 
     st.divider()
 
@@ -928,6 +943,7 @@ elif modo_app == "Preparación Cargas":
                         if c in st.session_state: del st.session_state[c]
 
                     st.session_state.df_prep_cargas = cargar_registros_prep_cargas()
+                    st.session_state.scroll_top = True
                     st.query_params["recarga"] = str(time.time())
                     time.sleep(0.5)
                     st.rerun()
