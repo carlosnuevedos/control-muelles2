@@ -23,6 +23,7 @@ icono_lanzadera_base64 = convertir_imagen_a_base64("Lanzadera.png")
 icono_clientes_base64 = convertir_imagen_a_base64("Clientes.png")
 icono_pallet_base64 = convertir_imagen_a_base64("Pallet.png")
 icono_carretilla_base64 = convertir_imagen_a_base64("Carretilla.png")
+icono_cargas_base64 = convertir_imagen_a_base64("Cargas.png")
 
 # Configuración de la página web
 st.set_page_config(
@@ -152,6 +153,13 @@ COLS_NECESARIAS_REUB = [
     "Carretillero NCT", "Nº Pedido", "Nº Cajas", "Tiempo NCT"
 ]
 
+COLS_NECESARIAS_PREP_CARGAS = [
+    "Fecha Registro", "Mes", "Semana", "Día", "Turno",
+    "Nº Pts Cliente", "Carre Cliente", "Tiempo Prep. Clien", "Pts Reenf/Reet",
+    "Nº Pts Mail", "Carre Mailing", "Tiempo Prep. Mail",
+    "Nº Pts Persán", "Carre Persán", "Tiempo Prep. Persán"
+]
+
 # --- FUNCIONES DE LECTURA ROBUSTAS (DESDE FILA 5 -> ÍNDICE 4) ---
 def procesar_filas_hoja(raw_rows, cols_esperadas):
     if not raw_rows or len(raw_rows) <= 4:
@@ -212,6 +220,17 @@ def cargar_registros_reub():
         pass
     return pd.DataFrame(columns=COLS_NECESARIAS_REUB)
 
+def cargar_registros_prep_cargas():
+    try:
+        url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
+        response = requests.post(url_fresca, json={"action": "leer_prep_cargas"})
+        if response.status_code == 200:
+            data = response.json()
+            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_PREP_CARGAS)
+    except Exception:
+        pass
+    return pd.DataFrame(columns=COLS_NECESARIAS_PREP_CARGAS)
+
 # Cargar estados en memoria
 if "df_registros" not in st.session_state:
     st.session_state.df_registros = cargar_registros_lanzaderas()
@@ -221,6 +240,8 @@ if "df_produccion" not in st.session_state:
     st.session_state.df_produccion = cargar_registros_produccion()
 if "df_reub" not in st.session_state:
     st.session_state.df_reub = cargar_registros_reub()
+if "df_prep_cargas" not in st.session_state:
+    st.session_state.df_prep_cargas = cargar_registros_prep_cargas()
 
 zona_espana = timezone(timedelta(hours=1))
 fecha_hoy_local = datetime.now(zona_espana).date() if hasattr(datetime, 'now') else datetime.now().date()
@@ -238,6 +259,7 @@ lista_horas = list(range(0, 24))
 lista_minutos = list(range(0, 60, 5))
 lista_horas_prod = list(range(0, 9))
 lista_minutos_15 = [0, 15, 30, 45]
+opciones_pallets_estandar = ["33", "26", "21", "24", "50", "Otra cantidad"]
 
 st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
 
@@ -260,7 +282,13 @@ def obtener_lista_carretilleros():
 st.sidebar.title("Navegación")
 modo_app = st.sidebar.radio(
     "Selecciona el apartado:", 
-    ["Control Lanzaderas", "Cargas de Cliente", "Producción", "Reubicaciones, Compactaciones y NCT's"]
+    [
+        "Control Lanzaderas", 
+        "Cargas de Cliente", 
+        "Producción", 
+        "Reubicaciones, Compactaciones y NCT's",
+        "Preparación Cargas"
+    ]
 )
 
 
@@ -866,5 +894,187 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
     st.subheader("📊 Últimos 5 Registros (Reub, Comp y NCT's)")
     if not st.session_state.df_reub.empty:
         st.dataframe(st.session_state.df_reub.tail(5), use_container_width=True)
+    else:
+        st.info("Aún no hay registros en este apartado.")
+
+
+# ==============================================================================
+# SECCIÓN 5: PREPARACIÓN CARGAS
+# ==============================================================================
+elif modo_app == "Preparación Cargas":
+    if icono_cargas_base64:
+        st.markdown(
+            f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_cargas_base64}' class='seccion-icono'> Preparación Cargas</h3>", 
+            unsafe_allow_html=True
+        )
+    else:
+        st.subheader("📦 Preparación Cargas")
+
+    carretilleros_actuales = obtener_lista_carretilleros()
+
+    # --- DATOS GENERALES ---
+    st.markdown("#### Datos Generales")
+    col_g1, col_g2 = st.columns(2)
+    with col_g1:
+        fecha_prep = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_prep_cargas")
+    with col_g2:
+        turno_prep = st.selectbox("Turno", ["Mañana", "Tarde", "Noche"], key="turno_prep_cargas")
+
+    st.divider()
+
+    # --- SUBAPARTADO 1: PREPARACIÓN CARGAS CLIENTE ---
+    activar_prep_cli = st.checkbox("📦 Registrar Preparación Cargas Cliente", key="chk_prep_cli")
+    carrs_cli_prep = []
+    tiempo_prep_cli_totales = 0
+    num_p_cli_prep = 0
+    num_p_reenf = 0
+
+    if activar_prep_cli:
+        st.markdown("#### 1. Preparación Cargas Cliente")
+        carrs_cli_prep = st.multiselect(
+            "Carretillero(s) - Cargas Cliente", 
+            carretilleros_actuales, 
+            placeholder="Selecciona uno o varios",
+            key="multi_carr_prep_cli"
+        )
+        
+        col_tc_h, col_tc_m = st.columns(2)
+        with col_tc_h: 
+            h_prep_cli = st.selectbox("Horas en Operación (Cargas Cliente)", lista_horas_prod, index=0, key="h_prep_cli")
+        with col_tc_m: 
+            m_prep_cli = st.selectbox("Minutos en Operación (Cargas Cliente)", lista_minutos_15, index=0, key="m_prep_cli")
+        tiempo_prep_cli_totales = (h_prep_cli * 60) + m_prep_cli
+
+        op_p_cli_prep = st.selectbox("Nº de Pallets (Cargas Cliente)", opciones_pallets_estandar, key="opt_p_prep_cli")
+        num_p_cli_prep = st.number_input("Especifica pallets cliente", min_value=1, max_value=500, value=33, key="num_p_prep_cli_val") if op_p_cli_prep == "Otra cantidad" else int(op_p_cli_prep)
+
+        reenfardar = st.selectbox("¿Se reenfardan/reetiquetan pallets?", ["No", "Sí"], key="sel_reenfardar")
+        if reenfardar == "Sí":
+            num_p_reenf = st.number_input("Nº de pallets reenfardados/reetiquetados", min_value=1, max_value=500, value=1, key="num_p_reenf_val")
+
+    st.divider()
+
+    # --- SUBAPARTADO 2: PREPARACIÓN MAILING ---
+    activar_prep_mail = st.checkbox("✉️ Registrar Preparación Mailing", key="chk_prep_mail")
+    carrs_mail_prep = []
+    tiempo_prep_mail_totales = 0
+    num_p_mail_prep = 0
+
+    if activar_prep_mail:
+        st.markdown("#### 2. Preparación Mailing")
+        carrs_mail_prep = st.multiselect(
+            "Carretillero(s) - Mailing", 
+            carretilleros_actuales, 
+            placeholder="Selecciona uno o varios",
+            key="multi_carr_prep_mail"
+        )
+        
+        col_tm_h, col_tm_m = st.columns(2)
+        with col_tm_h: 
+            h_prep_mail = st.selectbox("Horas en Operación (Mailing)", lista_horas_prod, index=0, key="h_prep_mail")
+        with col_tm_m: 
+            m_prep_mail = st.selectbox("Minutos en Operación (Mailing)", lista_minutos_15, index=0, key="m_prep_mail")
+        tiempo_prep_mail_totales = (h_prep_mail * 60) + m_prep_mail
+
+        op_p_mail_prep = st.selectbox("Nº de Pallets (Mailing)", opciones_pallets_estandar, key="opt_p_prep_mail")
+        num_p_mail_prep = st.number_input("Especifica pallets mailing", min_value=1, max_value=500, value=33, key="num_p_prep_mail_val") if op_p_mail_prep == "Otra cantidad" else int(op_p_mail_prep)
+
+    st.divider()
+
+    # --- SUBAPARTADO 3: PREPARACIÓN PERSÁN ---
+    activar_prep_persan = st.checkbox("🏭 Registrar Preparación Persán", key="chk_prep_persan")
+    carrs_persan_prep = []
+    tiempo_prep_persan_totales = 0
+    num_p_persan_prep = 0
+
+    if activar_prep_persan:
+        st.markdown("#### 3. Preparación Persán")
+        carrs_persan_prep = st.multiselect(
+            "Carretillero(s) - Persán", 
+            carretilleros_actuales, 
+            placeholder="Selecciona uno o varios",
+            key="multi_carr_prep_persan"
+        )
+        
+        col_tp_h, col_tp_m = st.columns(2)
+        with col_tp_h: 
+            h_prep_persan = st.selectbox("Horas en Operación (Persán)", lista_horas_prod, index=0, key="h_prep_persan")
+        with col_tp_m: 
+            m_prep_persan = st.selectbox("Minutos en Operación (Persán)", lista_minutos_15, index=0, key="m_prep_persan")
+        tiempo_prep_persan_totales = (h_prep_persan * 60) + m_prep_persan
+
+        op_p_persan_prep = st.selectbox("Nº de Pallets (Persán)", opciones_pallets_estandar, key="opt_p_prep_persan")
+        num_p_persan_prep = st.number_input("Especifica pallets persán", min_value=1, max_value=500, value=33, key="num_p_prep_persan_val") if op_p_persan_prep == "Otra cantidad" else int(op_p_persan_prep)
+
+    st.divider()
+
+    # Gestor rápido para añadir carretillero
+    with st.expander("➕ ¿Necesitas añadir un carretillero nuevo a la lista?"):
+        col_ex1, col_ex2 = st.columns([0.75, 0.25])
+        with col_ex1: 
+            nuevo_carr_gen = st.text_input("Nombre del carretillero", placeholder="Ej: F. Gómez", key="inp_carr_prep_gen").strip()
+        with col_ex2:
+            st.write("")
+            btn_add_gen = st.button("Añadir", key="btn_add_prep_gen")
+        if btn_add_gen and nuevo_carr_gen:
+            if nuevo_carr_gen not in st.session_state.carretilleros_extra:
+                st.session_state.carretilleros_extra.append(nuevo_carr_gen)
+                st.success(f"¡'{nuevo_carr_gen}' añadido a los desplegables!")
+                st.rerun()
+
+    submitted_prep_cargas = st.button("Guardar Registro de Preparación de Cargas")
+
+    if submitted_prep_cargas:
+        if not activar_prep_cli and not activar_prep_mail and not activar_prep_persan:
+            st.warning("⚠️ Marca al menos uno de los tres apartados antes de guardar.")
+        else:
+            try:
+                fila_prep = [[
+                    fecha_prep.strftime("%Y-%m-%d"),
+                    "", # Semana (calculada en Apps Script)
+                    "", # Día (calculado en Apps Script)
+                    turno_prep,
+                    # Bloque 1: Cargas Cliente
+                    int(num_p_cli_prep) if activar_prep_cli else "",
+                    ", ".join(carrs_cli_prep) if activar_prep_cli else "",
+                    int(tiempo_prep_cli_totales) if activar_prep_cli else "",
+                    int(num_p_reenf) if (activar_prep_cli and num_p_reenf > 0) else "",
+                    # Bloque 2: Mailing
+                    int(num_p_mail_prep) if activar_prep_mail else "",
+                    ", ".join(carrs_mail_prep) if activar_prep_mail else "",
+                    int(tiempo_prep_mail_totales) if activar_prep_mail else "",
+                    # Bloque 3: Persán
+                    int(num_p_persan_prep) if activar_prep_persan else "",
+                    ", ".join(carrs_persan_prep) if activar_prep_persan else "",
+                    int(tiempo_prep_persan_totales) if activar_prep_persan else ""
+                ]]
+
+                response = requests.post(WEB_APP_URL, json={"action": "update_prep_cargas", "rows": fila_prep})
+                if response.status_code == 200:
+                    st.success("✅ ¡Registro de Preparación de Cargas guardado correctamente!")
+                    st.balloons()
+                    
+                    claves_limpiar = [
+                        "chk_prep_cli", "multi_carr_prep_cli", "h_prep_cli", "m_prep_cli", "opt_p_prep_cli", "num_p_prep_cli_val", "sel_reenfardar", "num_p_reenf_val",
+                        "chk_prep_mail", "multi_carr_prep_mail", "h_prep_mail", "m_prep_mail", "opt_p_prep_mail", "num_p_prep_mail_val",
+                        "chk_prep_persan", "multi_carr_prep_persan", "h_prep_persan", "m_prep_persan", "opt_p_prep_persan", "num_p_prep_persan_val"
+                    ]
+                    for c in claves_limpiar:
+                        if c in st.session_state:
+                            del st.session_state[c]
+
+                    st.session_state.df_prep_cargas = cargar_registros_prep_cargas()
+                    st.query_params["recarga"] = str(time.time())
+                    time.sleep(0.5)
+                    st.rerun()
+                else:
+                    st.error(f"❌ Error al conectar con Google Sheets: {response.text}")
+            except Exception as e:
+                st.error(f"❌ Error al procesar: {e}")
+
+    st.divider()
+    st.subheader("📊 Últimos 5 Registros (Preparación Cargas)")
+    if not st.session_state.df_prep_cargas.empty:
+        st.dataframe(st.session_state.df_prep_cargas.tail(5), use_container_width=True)
     else:
         st.info("Aún no hay registros en este apartado.")
