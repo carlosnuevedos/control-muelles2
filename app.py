@@ -62,7 +62,6 @@ st.markdown("""
             user-select: none;
         }
 
-        /* --- BOTÓN FLOTANTE MINIMALISTA BLANCO, TRANSLÚCIDO Y CON SOMBRA --- */
         .btn-flotante-arriba {
             position: fixed;
             bottom: 85px;
@@ -94,21 +93,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Botón flotante para subir arriba
-st.markdown(
-    '<a href="#top-section" class="btn-flotante-arriba" title="Volver arriba">↑</a>',
-    unsafe_allow_html=True
-)
+st.markdown('<a href="#top-section" class="btn-flotante-arriba" title="Volver arriba">↑</a>', unsafe_allow_html=True)
 
 # Cabecera corporativa
 col_logo, col_titulo = st.columns([0.16, 0.84])
 
 with col_logo:
     if logo_base64:
-        st.markdown(
-            f'<img src="data:image/png;base64,{logo_base64}" class="logo-icono">', 
-            unsafe_allow_html=True
-        )
+        st.markdown(f'<img src="data:image/png;base64,{logo_base64}" class="logo-icono">', unsafe_allow_html=True)
     else:
         st.write("🚛")
 
@@ -160,20 +152,17 @@ COLS_NECESARIAS_PREP_CARGAS = [
     "Nº Pts Persán", "Carre Persán", "Tiempo Prep. Persán"
 ]
 
-# --- FUNCIONES DE LECTURA ROBUSTAS (DESDE FILA 5 -> ÍNDICE 4) ---
+# --- FUNCIONES DE LECTURA ROBUSTAS ---
 def procesar_filas_hoja(raw_rows, cols_esperadas):
     if not raw_rows or len(raw_rows) <= 4:
         return pd.DataFrame(columns=cols_esperadas)
-    
     datos_validos = []
     for r in raw_rows[4:]:
         if len(r) > 0 and str(r[0]).strip() != "":
             fila_normalizada = list(r) + [""] * (len(cols_esperadas) - len(r))
             datos_validos.append(fila_normalizada[:len(cols_esperadas)])
-            
     if not datos_validos:
         return pd.DataFrame(columns=cols_esperadas)
-        
     return pd.DataFrame(datos_validos, columns=cols_esperadas)
 
 def cargar_registros_lanzaderas():
@@ -181,8 +170,7 @@ def cargar_registros_lanzaderas():
         url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
         response = requests.post(url_fresca, json={"action": "leer"})
         if response.status_code == 200:
-            data = response.json()
-            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_LANZADERAS)
+            return procesar_filas_hoja(response.json().get("rows", []), COLS_NECESARIAS_LANZADERAS)
     except Exception:
         pass
     return pd.DataFrame(columns=COLS_NECESARIAS_LANZADERAS)
@@ -192,8 +180,7 @@ def cargar_registros_clientes():
         url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
         response = requests.post(url_fresca, json={"action": "leer_clientes"})
         if response.status_code == 200:
-            data = response.json()
-            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_CLIENTES)
+            return procesar_filas_hoja(response.json().get("rows", []), COLS_NECESARIAS_CLIENTES)
     except Exception:
         pass
     return pd.DataFrame(columns=COLS_NECESARIAS_CLIENTES)
@@ -203,8 +190,7 @@ def cargar_registros_produccion():
         url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
         response = requests.post(url_fresca, json={"action": "leer_produccion"})
         if response.status_code == 200:
-            data = response.json()
-            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_PRODUCCION)
+            return procesar_filas_hoja(response.json().get("rows", []), COLS_NECESARIAS_PRODUCCION)
     except Exception:
         pass
     return pd.DataFrame(columns=COLS_NECESARIAS_PRODUCCION)
@@ -214,8 +200,7 @@ def cargar_registros_reub():
         url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
         response = requests.post(url_fresca, json={"action": "leer_reub"})
         if response.status_code == 200:
-            data = response.json()
-            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_REUB)
+            return procesar_filas_hoja(response.json().get("rows", []), COLS_NECESARIAS_REUB)
     except Exception:
         pass
     return pd.DataFrame(columns=COLS_NECESARIAS_REUB)
@@ -225,89 +210,62 @@ def cargar_registros_prep_cargas():
         url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
         response = requests.post(url_fresca, json={"action": "leer_prep_cargas"})
         if response.status_code == 200:
-            data = response.json()
-            return procesar_filas_hoja(data.get("rows", []), COLS_NECESARIAS_PREP_CARGAS)
+            return procesar_filas_hoja(response.json().get("rows", []), COLS_NECESARIAS_PREP_CARGAS)
     except Exception:
         pass
     return pd.DataFrame(columns=COLS_NECESARIAS_PREP_CARGAS)
 
 # Cargar estados en memoria
-if "df_registros" not in st.session_state:
-    st.session_state.df_registros = cargar_registros_lanzaderas()
-if "df_clientes" not in st.session_state:
-    st.session_state.df_clientes = cargar_registros_clientes()
-if "df_produccion" not in st.session_state:
-    st.session_state.df_produccion = cargar_registros_produccion()
-if "df_reub" not in st.session_state:
-    st.session_state.df_reub = cargar_registros_reub()
-if "df_prep_cargas" not in st.session_state:
-    st.session_state.df_prep_cargas = cargar_registros_prep_cargas()
+if "df_registros" not in st.session_state: st.session_state.df_registros = cargar_registros_lanzaderas()
+if "df_clientes" not in st.session_state: st.session_state.df_clientes = cargar_registros_clientes()
+if "df_produccion" not in st.session_state: st.session_state.df_produccion = cargar_registros_produccion()
+if "df_reub" not in st.session_state: st.session_state.df_reub = cargar_registros_reub()
+if "df_prep_cargas" not in st.session_state: st.session_state.df_prep_cargas = cargar_registros_prep_cargas()
 
 zona_espana = timezone(timedelta(hours=1))
 fecha_hoy_local = datetime.now(zona_espana).date() if hasattr(datetime, 'now') else datetime.now().date()
 
 def calcular_turno(hora, minuto):
     total_minutos = (hora * 60) + minuto
-    if 360 <= total_minutos <= 835:
-        return "Mañana"
-    elif 840 <= total_minutos <= 1315:
-        return "Tarde"
-    else:
-        return "Noche"
+    if 360 <= total_minutos <= 835: return "Mañana"
+    elif 840 <= total_minutos <= 1315: return "Tarde"
+    else: return "Noche"
 
 lista_horas = list(range(0, 24))
 lista_minutos = list(range(0, 60, 5))
 lista_horas_prod = list(range(0, 9))
 lista_minutos_15 = [0, 15, 30, 45]
-opciones_pallets_estandar = ["33", "26", "21", "24", "50", "Otra cantidad"]
 
 st.markdown("<div id='top-section'></div>", unsafe_allow_html=True)
 
-# ==========================================
-# GESTIÓN FIJA DE CARRETILLEROS + EXTRA EN SESIÓN
-# ==========================================
-if "carretilleros_extra" not in st.session_state:
-    st.session_state.carretilleros_extra = []
+# GESTIÓN DE CARRETILLEROS EXTRA
+if "carretilleros_extra" not in st.session_state: st.session_state.carretilleros_extra = []
 
 def obtener_lista_carretilleros():
     lista = list(CARRETILLEROS_BASE)
     for c in st.session_state.carretilleros_extra:
-        if c not in lista:
-            lista.append(c)
+        if c not in lista: lista.append(c)
     return sorted(lista)
 
-# ==========================================
-# NAVEGACIÓN PRINCIPAL
-# ==========================================
+# --- NAVEGACIÓN PRINCIPAL ---
 st.sidebar.title("Navegación")
 modo_app = st.sidebar.radio(
     "Selecciona el apartado:", 
-    [
-        "Control Lanzaderas", 
-        "Cargas de Cliente", 
-        "Producción", 
-        "Reubicaciones, Compactaciones y NCT's",
-        "Preparación Cargas"
-    ]
+    ["Control Lanzaderas", "Cargas de Cliente", "Producción", "Reubicaciones, Compactaciones y NCT's", "Preparación Cargas"]
 )
 
 
 # ==============================================================================
 # SECCIÓN 1: CONTROL DE LANZADERAS
 # ==============================================================================
-if modo_app == "Control Lanzaderas":
+elif modo_app == "Control Lanzaderas":
     if icono_lanzadera_base64:
-        st.markdown(
-            f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_lanzadera_base64}' class='seccion-icono'> Nuevo Registro de Vehículo (Lanzaderas)</h3>", 
-            unsafe_allow_html=True
-        )
+        st.markdown(f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_lanzadera_base64}' class='seccion-icono'> Nuevo Registro de Vehículo (Lanzaderas)</h3>", unsafe_allow_html=True)
     else:
         st.subheader("🚛 Nuevo Registro de Vehículo (Lanzaderas)")
 
-    if "modo_mat" not in st.session_state:
-        st.session_state.modo_mat = "Seleccionar existente"
-    if "modo_carr_lanz" not in st.session_state:
-        st.session_state.modo_carr_lanz = "Seleccionar existente"
+    if "modo_mat" not in st.session_state: st.session_state.modo_mat = "Seleccionar existente"
+    if "modo_carr_lanz" not in st.session_state: st.session_state.modo_carr_lanz = "Seleccionar existente"
 
     carretilleros_actuales = obtener_lista_carretilleros()
     matriculas_guardadas = []
@@ -318,23 +276,17 @@ if modo_app == "Control Lanzaderas":
         ])
 
     col_f1, col_f2 = st.columns(2)
-
-    with col_f1:
-        fecha_registro = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_lanz")
-
+    with col_f1: fecha_registro = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_lanz")
     with col_f2:
         st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 6px; color: inherit;">Carretillero</p>', unsafe_allow_html=True)
         if st.session_state.modo_carr_lanz == "Seleccionar existente":
             carretillero = st.selectbox("Carretillero", carretilleros_actuales, label_visibility="collapsed", key="select_carretillero_existente_lanz")
         else:
             col_nc1, col_nc2 = st.columns([0.75, 0.25])
-            with col_nc1:
-                nuevo_carr = st.text_input("Nombre", placeholder="Ej: J. Pérez", label_visibility="collapsed", key="input_nuevo_carr_lanz").strip()
-            with col_nc2:
-                btn_add_carr = st.button("Añadir", key="btn_guardar_nuevo_carr_lanz")
+            with col_nc1: nuevo_carr = st.text_input("Nombre", placeholder="Ej: J. Pérez", label_visibility="collapsed", key="input_nuevo_carr_lanz").strip()
+            with col_nc2: btn_add_carr = st.button("Añadir", key="btn_guardar_nuevo_carr_lanz")
             if btn_add_carr and nuevo_carr:
-                if nuevo_carr not in st.session_state.carretilleros_extra:
-                    st.session_state.carretilleros_extra.append(nuevo_carr)
+                if nuevo_carr not in st.session_state.carretilleros_extra: st.session_state.carretilleros_extra.append(nuevo_carr)
                 st.success(f"¡'{nuevo_carr}' añadido!")
                 st.session_state.modo_carr_lanz = "Seleccionar existente"
                 st.rerun()
@@ -358,7 +310,6 @@ if modo_app == "Control Lanzaderas":
             st.rerun()
 
     st.divider()
-
     activar_descarga = st.checkbox("📥 Registrar DESCARGA de mercancía", key="chk_descarga")
     albaran_descarga = ""
     pallets_descarga = 33
@@ -368,8 +319,7 @@ if modo_app == "Control Lanzaderas":
     if activar_descarga:
         st.markdown("#### Tiempos de Descarga")
         col_d1, col_d2 = st.columns(2)
-        with col_d1:
-            albaran_descarga = st.text_input("Nº de Albarán (Descarga)", key="alb_desc")
+        with col_d1: albaran_descarga = st.text_input("Nº de Albarán (Descarga)", key="alb_desc")
         with col_d2:
             opcion_pallets_d = st.selectbox("Pallets Descargados", ["33", "26", "Otra cantidad"], key="opt_p_desc")
             pallets_descarga = st.number_input("Especifica cantidad", min_value=1, max_value=200, value=33, key="p_desc_otro") if opcion_pallets_d == "Otra cantidad" else int(opcion_pallets_d)
@@ -389,7 +339,6 @@ if modo_app == "Control Lanzaderas":
         t_fin_d = (d_fin_h * 60) + d_fin_m
 
     st.divider()
-
     activar_carga = st.checkbox("📤 Registrar CARGA de mercancía", key="chk_carga")
     albaran_carga = ""
     pallets_carga = 33
@@ -493,16 +442,11 @@ if modo_app == "Control Lanzaderas":
 # ==============================================================================
 elif modo_app == "Cargas de Cliente":
     if icono_clientes_base64:
-        st.markdown(
-            f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_clientes_base64}' class='seccion-icono'> Nuevo Registro de Carga de Cliente</h3>", 
-            unsafe_allow_html=True
-        )
+        st.markdown(f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_clientes_base64}' class='seccion-icono'> Nuevo Registro de Carga de Cliente</h3>", unsafe_allow_html=True)
     else:
         st.subheader("📦 Nuevo Registro de Carga de Cliente")
 
-    if "modo_carr_cli" not in st.session_state:
-        st.session_state.modo_carr_cli = "Seleccionar existente"
-
+    if "modo_carr_cli" not in st.session_state: st.session_state.modo_carr_cli = "Seleccionar existente"
     carretilleros_actuales = obtener_lista_carretilleros()
 
     col_c1, col_c2 = st.columns(2)
@@ -516,13 +460,10 @@ elif modo_app == "Cargas de Cliente":
             carretillero_cli = st.selectbox("Carretillero (Cliente)", carretilleros_actuales, label_visibility="collapsed", key="sel_carr_cli")
         else:
             col_nc1, col_nc2 = st.columns([0.75, 0.25])
-            with col_nc1:
-                nuevo_carr_cli = st.text_input("Nombre", placeholder="Ej: J. Pérez", label_visibility="collapsed", key="input_nuevo_carr_cli").strip()
-            with col_nc2:
-                btn_add_carr_cli = st.button("Añadir", key="btn_guardar_nuevo_carr_cli")
+            with col_nc1: nuevo_carr_cli = st.text_input("Nombre", placeholder="Ej: J. Pérez", label_visibility="collapsed", key="input_nuevo_carr_cli").strip()
+            with col_nc2: btn_add_carr_cli = st.button("Añadir", key="btn_guardar_nuevo_carr_cli")
             if btn_add_carr_cli and nuevo_carr_cli:
-                if nuevo_carr_cli not in st.session_state.carretilleros_extra:
-                    st.session_state.carretilleros_extra.append(nuevo_carr_cli)
+                if nuevo_carr_cli not in st.session_state.carretilleros_extra: st.session_state.carretilleros_extra.append(nuevo_carr_cli)
                 st.success(f"¡'{nuevo_carr_cli}' añadido!")
                 st.session_state.modo_carr_cli = "Seleccionar existente"
                 st.rerun()
@@ -533,8 +474,7 @@ elif modo_app == "Cargas de Cliente":
             st.session_state.modo_carr_cli = nuevo_modo_carr_cli
             st.rerun()
 
-        opcion_pallets_cli = st.selectbox("Número de Pallets", ["33", "26", "24", "21", "50", "Otra cantidad"], key="opt_p_cli")
-        num_pallets_cli = st.number_input("Especifica pallets", min_value=1, max_value=200, value=33, key="p_cli_otro") if opcion_pallets_cli == "Otra cantidad" else int(opcion_pallets_cli)
+        num_pallets_cli = st.number_input("Número de Pallets", min_value=1, max_value=500, value=33, key="num_p_cli")
 
     st.markdown("#### Horarios y Control")
     c_ph1, c_ph2 = st.columns(2)
@@ -568,7 +508,7 @@ elif modo_app == "Cargas de Cliente":
                 if response.status_code == 200:
                     st.success(f"✅ ¡Carga de cliente **{transporte.upper()}** guardada!")
                     st.balloons()
-                    for c in ["num_transporte", "inc_cli", "opt_etiquetas", "p_cli_otro"]:
+                    for c in ["num_transporte", "inc_cli", "opt_etiquetas", "num_p_cli"]:
                         if c in st.session_state: del st.session_state[c]
                     st.session_state.df_clientes = cargar_registros_clientes()
                     st.query_params["recarga"] = str(time.time())
@@ -590,34 +530,25 @@ elif modo_app == "Cargas de Cliente":
 # ==============================================================================
 elif modo_app == "Producción":
     if icono_pallet_base64:
-        st.markdown(
-            f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_pallet_base64}' class='seccion-icono'> Nuevo registro de Producción</h3>", 
-            unsafe_allow_html=True
-        )
+        st.markdown(f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_pallet_base64}' class='seccion-icono'> Nuevo registro de Producción</h3>", unsafe_allow_html=True)
     else:
         st.subheader("📦 Nuevo registro de Producción")
 
-    if "modo_carr_prod" not in st.session_state:
-        st.session_state.modo_carr_prod = "Seleccionar existente"
-
+    if "modo_carr_prod" not in st.session_state: st.session_state.modo_carr_prod = "Seleccionar existente"
     carretilleros_actuales = obtener_lista_carretilleros()
 
     col_p1, col_p2 = st.columns(2)
-    with col_p1:
-        fecha_prod = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_prod")
+    with col_p1: fecha_prod = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_prod")
     with col_p2:
         st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 6px; color: inherit;">Carretillero</p>', unsafe_allow_html=True)
         if st.session_state.modo_carr_prod == "Seleccionar existente":
             carretillero_prod = st.selectbox("Carretillero (Prod)", carretilleros_actuales, label_visibility="collapsed", key="sel_carr_prod")
         else:
             col_nc1, col_nc2 = st.columns([0.75, 0.25])
-            with col_nc1:
-                nuevo_carr_prod = st.text_input("Nombre", placeholder="Ej: J. Pérez", label_visibility="collapsed", key="input_nuevo_carr_prod").strip()
-            with col_nc2:
-                btn_add_carr_prod = st.button("Añadir", key="btn_guardar_nuevo_carr_prod")
+            with col_nc1: nuevo_carr_prod = st.text_input("Nombre", placeholder="Ej: J. Pérez", label_visibility="collapsed", key="input_nuevo_carr_prod").strip()
+            with col_nc2: btn_add_carr_prod = st.button("Añadir", key="btn_guardar_nuevo_carr_prod")
             if btn_add_carr_prod and nuevo_carr_prod:
-                if nuevo_carr_prod not in st.session_state.carretilleros_extra:
-                    st.session_state.carretilleros_extra.append(nuevo_carr_prod)
+                if nuevo_carr_prod not in st.session_state.carretilleros_extra: st.session_state.carretilleros_extra.append(nuevo_carr_prod)
                 st.success(f"¡'{nuevo_carr_prod}' añadido!")
                 st.session_state.modo_carr_prod = "Seleccionar existente"
                 st.rerun()
@@ -628,35 +559,23 @@ elif modo_app == "Producción":
             st.session_state.modo_carr_prod = nuevo_modo_carr_prod
             st.rerun()
 
-    col_t1, col_t2 = st.columns(2)
-    with col_t1:
-        turno_prod = st.selectbox("Turno", ["Mañana", "Tarde", "Noche"], key="sel_turno_prod")
-    with col_t2:
-        st.write("")
+    turno_prod = st.selectbox("Turno", ["Mañana", "Tarde", "Noche"], key="sel_turno_prod")
 
     st.markdown("#### Número de pallets")
-    
     col_pal1, col_pal2 = st.columns(2)
-    with col_pal1:
-        pallets_maquilado = st.number_input("Pallets Maquilado", min_value=0, max_value=1000, value=0, key="num_p_maquilado")
-    with col_pal2:
-        pallets_chequeo = st.number_input("Pallets Chequeo", min_value=0, max_value=1000, value=0, key="num_p_chequeo")
+    with col_pal1: pallets_maquilado = st.number_input("Pallets Maquilado", min_value=0, max_value=1000, value=0, key="num_p_maquilado")
+    with col_pal2: pallets_chequeo = st.number_input("Pallets Chequeo", min_value=0, max_value=1000, value=0, key="num_p_chequeo")
 
     st.markdown("#### Tiempo Empleado")
-    
     st.write("**Tiempo Maquilado:**")
     col_tm1, col_tm2 = st.columns(2)
-    with col_tm1:
-        tm_h = st.selectbox("Horas Maquilado", lista_horas_prod, index=0, key="tm_h")
-    with col_tm2:
-        tm_m = st.selectbox("Minutos Maquilado", lista_minutos, index=0, key="tm_m")
+    with col_tm1: tm_h = st.selectbox("Horas Maquilado", lista_horas_prod, index=0, key="tm_h")
+    with col_tm2: tm_m = st.selectbox("Minutos Maquilado", lista_minutos, index=0, key="tm_m")
 
     st.write("**Tiempo Chequeo:**")
     col_tc1, col_tc2 = st.columns(2)
-    with col_tc1:
-        tc_h = st.selectbox("Horas Chequeo", lista_horas_prod, index=0, key="tc_h")
-    with col_tc2:
-        tc_m = st.selectbox("Minutos Chequeo", lista_minutos, index=0, key="tc_m")
+    with col_tc1: tc_h = st.selectbox("Horas Chequeo", lista_horas_prod, index=0, key="tc_h")
+    with col_tc2: tc_m = st.selectbox("Minutos Chequeo", lista_minutos, index=0, key="tc_m")
 
     minutos_maquilado_totales = (tm_h * 60) + tm_m
     minutos_chequeo_totales = (tc_h * 60) + tc_m
@@ -676,15 +595,11 @@ elif modo_app == "Producción":
             ]]
 
             response = requests.post(WEB_APP_URL, json={"action": "update_produccion", "rows": fila_produccion})
-            
             if response.status_code == 200:
                 st.success("✅ ¡Registro de Producción guardado correctamente!")
                 st.balloons()
-                
                 for clave in ["num_p_maquilado", "num_p_chequeo", "tm_h", "tm_m", "tc_h", "tc_m"]:
-                    if clave in st.session_state:
-                        del st.session_state[clave]
-
+                    if clave in st.session_state: del st.session_state[clave]
                 st.session_state.df_produccion = cargar_registros_produccion()
                 st.query_params["recarga"] = str(time.time())
                 time.sleep(0.5)
@@ -707,116 +622,102 @@ elif modo_app == "Producción":
 # ==============================================================================
 elif modo_app == "Reubicaciones, Compactaciones y NCT's":
     if icono_carretilla_base64:
-        st.markdown(
-            f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_carretilla_base64}' class='seccion-icono'> Reubicaciones, Compactaciones y NCT's</h3>", 
-            unsafe_allow_html=True
-        )
+        st.markdown(f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_carretilla_base64}' class='seccion-icono'> Reubicaciones, Compactaciones y NCT's</h3>", unsafe_allow_html=True)
     else:
         st.subheader("🔄 Reubicaciones, Compactaciones y NCT's")
 
     carretilleros_actuales = obtener_lista_carretilleros()
 
-    # --- SECCIÓN GENERAL ---
+    # --- DATOS GENERALES ---
     st.markdown("#### Datos Generales")
     col_gen1, col_gen2 = st.columns(2)
-    with col_gen1:
-        fecha_reub = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_reub")
-    with col_gen2:
-        turno_reub = st.selectbox("Turno", ["Mañana", "Tarde", "Noche"], key="sel_turno_reub")
+    with col_gen1: fecha_reub = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_reub")
+    with col_gen2: turno_reub = st.selectbox("Turno", ["Mañana", "Tarde", "Noche"], key="sel_turno_reub")
 
     st.divider()
 
     # --- SUBAPARTADO 1: REUBICACIONES ---
-    st.markdown("#### 1. Reubicaciones")
-    col_r1, col_r2 = st.columns(2)
-    with col_r1:
-        carrs_reub = st.multiselect(
-            "Carretillero(s) Reubicaciones", 
-            carretilleros_actuales, 
-            placeholder="Selecciona uno o varios",
-            key="multi_carr_reub"
-        )
-    with col_r2:
-        num_pallets_reub = st.number_input("Nº de Pallets", min_value=0, max_value=1000, value=0, key="num_p_reub")
+    activar_reub = st.checkbox("🔄 Registrar Reubicaciones", key="chk_reub")
+    carrs_reub = []
+    num_pallets_reub = 0
+
+    if activar_reub:
+        st.markdown("#### 1. Reubicaciones")
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            carrs_reub = st.multiselect("Carretillero(s) Reubicaciones", carretilleros_actuales, placeholder="Selecciona uno o varios", key="multi_carr_reub")
+        with col_r2:
+            num_pallets_reub = st.number_input("Nº de Pallets", min_value=0, max_value=1000, value=0, key="num_p_reub")
 
     st.divider()
 
     # --- SUBAPARTADO 2: COMPACTACIONES ---
-    st.markdown("#### 2. Compactaciones")
-    col_c1, col_c2 = st.columns(2)
-    with col_c1:
-        carrs_comp = st.multiselect(
-            "Carretillero(s) Compactaciones", 
-            carretilleros_actuales, 
-            placeholder="Selecciona uno o varios",
-            key="multi_carr_comp"
-        )
-    with col_c2:
-        num_compactaciones = st.number_input("Nº de Compactaciones", min_value=0, max_value=1000, value=0, key="num_comp")
+    activar_comp = st.checkbox("⚙️ Registrar Compactaciones", key="chk_comp")
+    carrs_comp = []
+    num_compactaciones = 0
+    minutos_compact_totales = 0
 
-    st.write("**Tiempo en Operación (Compactaciones):**")
-    col_tc_h, col_tc_m = st.columns(2)
-    with col_tc_h:
-        comp_h = st.selectbox("Horas (Compact.)", lista_horas_prod, index=0, key="comp_h")
-    with col_tc_m:
-        comp_m = st.selectbox("Minutos (Compact.)", lista_minutos_15, index=0, key="comp_m")
+    if activar_comp:
+        st.markdown("#### 2. Compactaciones")
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            carrs_comp = st.multiselect("Carretillero(s) Compactaciones", carretilleros_actuales, placeholder="Selecciona uno o varios", key="multi_carr_comp")
+        with col_c2:
+            num_compactaciones = st.number_input("Nº de Compactaciones", min_value=0, max_value=1000, value=0, key="num_comp")
 
-    minutos_compact_totales = (comp_h * 60) + comp_m
+        st.write("**Tiempo en Operación (Compactaciones):**")
+        col_tc_h, col_tc_m = st.columns(2)
+        with col_tc_h: comp_h = st.selectbox("Horas (Compact.)", lista_horas_prod, index=0, key="comp_h")
+        with col_tc_m: comp_m = st.selectbox("Minutos (Compact.)", lista_minutos_15, index=0, key="comp_m")
+        minutos_compact_totales = (comp_h * 60) + comp_m
 
     st.divider()
 
     # --- SUBAPARTADO 3: NCT'S ---
-    st.markdown("#### 3. NCT's")
-    if "num_ncts" not in st.session_state:
-        st.session_state.num_ncts = 1
-
+    activar_nct = st.checkbox("📋 Registrar NCT's", key="chk_nct")
     datos_ncts = []
-    for i in range(st.session_state.num_ncts):
-        if st.session_state.num_ncts > 1:
-            st.markdown(f"**NCT #{i + 1}**")
-        
-        col_n1, col_n2, col_n3 = st.columns(3)
-        with col_n1:
-            pedido_nct = st.text_input("Nº de Pedido", placeholder="Ej: PED-1234", key=f"ped_nct_{i}")
-        with col_n2:
-            carr_nct = st.selectbox("Carretillero", [""] + carretilleros_actuales, key=f"carr_nct_{i}")
-        with col_n3:
-            cajas_nct = st.number_input("Nº de Cajas", min_value=0, max_value=5000, value=0, key=f"cajas_nct_{i}")
 
-        col_nh, col_nm = st.columns(2)
-        with col_nh:
-            nct_h = st.selectbox("Horas Operación (NCT)", lista_horas_prod, index=0, key=f"nct_h_{i}")
-        with col_nm:
-            nct_m = st.selectbox("Minutos Operación (NCT)", lista_minutos_15, index=0, key=f"nct_m_{i}")
+    if activar_nct:
+        st.markdown("#### 3. NCT's")
+        if "num_ncts" not in st.session_state: st.session_state.num_ncts = 1
 
-        minutos_nct_totales = (nct_h * 60) + nct_m
+        for i in range(st.session_state.num_ncts):
+            if st.session_state.num_ncts > 1: st.markdown(f"**NCT #{i + 1}**")
+            
+            col_n1, col_n2, col_n3 = st.columns(3)
+            with col_n1: pedido_nct = st.text_input("Nº de Pedido", placeholder="Ej: PED-1234", key=f"ped_nct_{i}")
+            with col_n2: carr_nct = st.selectbox("Carretillero", [""] + carretilleros_actuales, key=f"carr_nct_{i}")
+            with col_n3: cajas_nct = st.number_input("Nº de Cajas", min_value=0, max_value=5000, value=0, key=f"cajas_nct_{i}")
 
-        datos_ncts.append({
-            "pedido": pedido_nct.strip(),
-            "carretillero": carr_nct,
-            "cajas": int(cajas_nct),
-            "tiempo": int(minutos_nct_totales)
-        })
+            col_nh, col_nm = st.columns(2)
+            with col_nh: nct_h = st.selectbox("Horas Operación (NCT)", lista_horas_prod, index=0, key=f"nct_h_{i}")
+            with col_nm: nct_m = st.selectbox("Minutos Operación (NCT)", lista_minutos_15, index=0, key=f"nct_m_{i}")
 
-        if i < st.session_state.num_ncts - 1:
-            st.markdown("---")
+            minutos_nct_totales = (nct_h * 60) + nct_m
+            datos_ncts.append({
+                "pedido": pedido_nct.strip(),
+                "carretillero": carr_nct,
+                "cajas": int(cajas_nct),
+                "tiempo": int(minutos_nct_totales)
+            })
 
-    col_btn_nct1, col_btn_nct2 = st.columns([0.4, 0.6])
-    with col_btn_nct1:
-        if st.button("➕ Añadir nueva NCT", key="btn_add_nct"):
-            st.session_state.num_ncts += 1
-            st.rerun()
-    with col_btn_nct2:
-        if st.session_state.num_ncts > 1:
-            if st.button("➖ Quitar última NCT", key="btn_del_nct"):
-                st.session_state.num_ncts -= 1
+            if i < st.session_state.num_ncts - 1: st.markdown("---")
+
+        col_btn_nct1, col_btn_nct2 = st.columns([0.4, 0.6])
+        with col_btn_nct1:
+            if st.button("➕ Añadir nueva NCT", key="btn_add_nct"):
+                st.session_state.num_ncts += 1
                 st.rerun()
+        with col_btn_nct2:
+            if st.session_state.num_ncts > 1:
+                if st.button("➖ Quitar última NCT", key="btn_del_nct"):
+                    st.session_state.num_ncts -= 1
+                    st.rerun()
 
-    # Opción rápida para añadir un nuevo carretillero a la lista
+    # Gestor rápido para añadir carretillero
     with st.expander("➕ ¿Necesitas añadir un carretillero nuevo a la lista?"):
         col_ex1, col_ex2 = st.columns([0.75, 0.25])
-        with col_ex1:
-            nuevo_carr_general = st.text_input("Nombre del carretillero", placeholder="Ej: F. Gómez", key="input_nuevo_carr_gen").strip()
+        with col_ex1: nuevo_carr_general = st.text_input("Nombre del carretillero", placeholder="Ej: F. Gómez", key="input_nuevo_carr_gen").strip()
         with col_ex2:
             st.write("")
             btn_add_gen = st.button("Añadir", key="btn_guardar_nuevo_gen")
@@ -827,68 +728,67 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
                 st.rerun()
 
     st.divider()
-
     submitted_reub = st.button("Guardar Registro (Reub, Comp y NCT's)")
 
     if submitted_reub:
-        try:
-            str_carrs_reub = ", ".join(carrs_reub)
-            str_carrs_comp = ", ".join(carrs_comp)
-            fecha_str = fecha_reub.strftime("%Y-%m-%d")
+        if not activar_reub and not activar_comp and not activar_nct:
+            st.warning("⚠️ Marca al menos uno de los tres apartados antes de guardar.")
+        else:
+            try:
+                str_carrs_reub = ", ".join(carrs_reub) if activar_reub else ""
+                str_carrs_comp = ", ".join(carrs_comp) if activar_comp else ""
+                fecha_str = fecha_reub.strftime("%Y-%m-%d")
+                filas_a_enviar = []
 
-            filas_a_enviar = []
+                # Construir la primera línea base
+                primera_nct = datos_ncts[0] if (activar_nct and datos_ncts) else {"pedido": "", "carretillero": "", "cajas": 0, "tiempo": 0}
+                tiene_nct_0 = bool(primera_nct["pedido"] or primera_nct["carretillero"] or primera_nct["cajas"] > 0 or primera_nct["tiempo"] > 0)
 
-            primera_nct = datos_ncts[0]
-            tiene_nct_0 = bool(primera_nct["pedido"] or primera_nct["carretillero"] or primera_nct["cajas"] > 0 or primera_nct["tiempo"] > 0)
+                filas_a_enviar.append([
+                    fecha_str,
+                    turno_reub,
+                    str_carrs_reub,
+                    int(num_pallets_reub) if (activar_reub and num_pallets_reub > 0) else "",
+                    str_carrs_comp,
+                    int(num_compactaciones) if (activar_comp and num_compactaciones > 0) else "",
+                    int(minutos_compact_totales) if (activar_comp and minutos_compact_totales > 0) else "",
+                    primera_nct["carretillero"] if tiene_nct_0 else "",
+                    primera_nct["pedido"] if tiene_nct_0 else "",
+                    primera_nct["cajas"] if tiene_nct_0 else "",
+                    primera_nct["tiempo"] if tiene_nct_0 else ""
+                ])
 
-            filas_a_enviar.append([
-                fecha_str,
-                turno_reub,
-                str_carrs_reub,
-                int(num_pallets_reub) if (str_carrs_reub or num_pallets_reub > 0) else "",
-                str_carrs_comp,
-                int(num_compactaciones) if (str_carrs_comp or num_compactaciones > 0) else "",
-                int(minutos_compact_totales) if (str_carrs_comp or num_compactaciones > 0 or minutos_compact_totales > 0) else "",
-                primera_nct["carretillero"] if tiene_nct_0 else "",
-                primera_nct["pedido"] if tiene_nct_0 else "",
-                primera_nct["cajas"] if tiene_nct_0 else "",
-                primera_nct["tiempo"] if tiene_nct_0 else ""
-            ])
+                # Si hay más NCTs adicionales
+                if activar_nct:
+                    for extra_nct in datos_ncts[1:]:
+                        if extra_nct["pedido"] or extra_nct["carretillero"] or extra_nct["cajas"] > 0 or extra_nct["tiempo"] > 0:
+                            filas_a_enviar.append([
+                                fecha_str, turno_reub, "", "", "", "", "",
+                                extra_nct["carretillero"], extra_nct["pedido"], extra_nct["cajas"], extra_nct["tiempo"]
+                            ])
 
-            for extra_nct in datos_ncts[1:]:
-                if extra_nct["pedido"] or extra_nct["carretillero"] or extra_nct["cajas"] > 0 or extra_nct["tiempo"] > 0:
-                    filas_a_enviar.append([
-                        fecha_str,
-                        turno_reub,
-                        "", "", "", "", "",
-                        extra_nct["carretillero"],
-                        extra_nct["pedido"],
-                        extra_nct["cajas"],
-                        extra_nct["tiempo"]
-                    ])
+                response = requests.post(WEB_APP_URL, json={"action": "update_reub", "rows": filas_a_enviar})
+                if response.status_code == 200:
+                    st.success("✅ ¡Registro guardado correctamente en Google Sheets!")
+                    st.balloons()
 
-            response = requests.post(WEB_APP_URL, json={"action": "update_reub", "rows": filas_a_enviar})
+                    claves_limpiar = ["chk_reub", "multi_carr_reub", "num_p_reub", "chk_comp", "multi_carr_comp", "num_comp", "comp_h", "comp_m", "chk_nct"]
+                    if "num_ncts" in st.session_state:
+                        for i in range(st.session_state.num_ncts):
+                            claves_limpiar.extend([f"ped_nct_{i}", f"carr_nct_{i}", f"cajas_nct_{i}", f"nct_h_{i}", f"nct_m_{i}"])
+                        st.session_state.num_ncts = 1
 
-            if response.status_code == 200:
-                st.success("✅ ¡Registro guardado correctamente en Google Sheets!")
-                st.balloons()
+                    for c in claves_limpiar:
+                        if c in st.session_state: del st.session_state[c]
 
-                claves_limpiar = ["multi_carr_reub", "num_p_reub", "multi_carr_comp", "num_comp", "comp_h", "comp_m"]
-                for i in range(st.session_state.num_ncts):
-                    claves_limpiar.extend([f"ped_nct_{i}", f"carr_nct_{i}", f"cajas_nct_{i}", f"nct_h_{i}", f"nct_m_{i}"])
-                for c in claves_limpiar:
-                    if c in st.session_state:
-                        del st.session_state[c]
-                st.session_state.num_ncts = 1
-
-                st.session_state.df_reub = cargar_registros_reub()
-                st.query_params["recarga"] = str(time.time())
-                time.sleep(0.5)
-                st.rerun()
-            else:
-                st.error(f"❌ Error al conectar con Google Sheets: {response.text}")
-        except Exception as e:
-            st.error(f"❌ Error al procesar: {e}")
+                    st.session_state.df_reub = cargar_registros_reub()
+                    st.query_params["recarga"] = str(time.time())
+                    time.sleep(0.5)
+                    st.rerun()
+                else:
+                    st.error(f"❌ Error al conectar con Google Sheets: {response.text}")
+            except Exception as e:
+                st.error(f"❌ Error al procesar: {e}")
 
     st.divider()
     st.subheader("📊 Últimos 5 Registros (Reub, Comp y NCT's)")
@@ -903,10 +803,7 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
 # ==============================================================================
 elif modo_app == "Preparación Cargas":
     if icono_cargas_base64:
-        st.markdown(
-            f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_cargas_base64}' class='seccion-icono'> Preparación Cargas</h3>", 
-            unsafe_allow_html=True
-        )
+        st.markdown(f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_cargas_base64}' class='seccion-icono'> Preparación Cargas</h3>", unsafe_allow_html=True)
     else:
         st.subheader("📦 Preparación Cargas")
 
@@ -915,10 +812,8 @@ elif modo_app == "Preparación Cargas":
     # --- DATOS GENERALES ---
     st.markdown("#### Datos Generales")
     col_g1, col_g2 = st.columns(2)
-    with col_g1:
-        fecha_prep = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_prep_cargas")
-    with col_g2:
-        turno_prep = st.selectbox("Turno", ["Mañana", "Tarde", "Noche"], key="turno_prep_cargas")
+    with col_g1: fecha_prep = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_prep_cargas")
+    with col_g2: turno_prep = st.selectbox("Turno", ["Mañana", "Tarde", "Noche"], key="turno_prep_cargas")
 
     st.divider()
 
@@ -931,22 +826,14 @@ elif modo_app == "Preparación Cargas":
 
     if activar_prep_cli:
         st.markdown("#### 1. Preparación Cargas Cliente")
-        carrs_cli_prep = st.multiselect(
-            "Carretillero(s) - Cargas Cliente", 
-            carretilleros_actuales, 
-            placeholder="Selecciona uno o varios",
-            key="multi_carr_prep_cli"
-        )
+        carrs_cli_prep = st.multiselect("Carretillero(s) - Cargas Cliente", carretilleros_actuales, placeholder="Selecciona uno o varios", key="multi_carr_prep_cli")
         
         col_tc_h, col_tc_m = st.columns(2)
-        with col_tc_h: 
-            h_prep_cli = st.selectbox("Horas en Operación (Cargas Cliente)", lista_horas_prod, index=0, key="h_prep_cli")
-        with col_tc_m: 
-            m_prep_cli = st.selectbox("Minutos en Operación (Cargas Cliente)", lista_minutos_15, index=0, key="m_prep_cli")
+        with col_tc_h: h_prep_cli = st.selectbox("Horas en Operación (Cargas Cliente)", lista_horas_prod, index=0, key="h_prep_cli")
+        with col_tc_m: m_prep_cli = st.selectbox("Minutos en Operación (Cargas Cliente)", lista_minutos_15, index=0, key="m_prep_cli")
         tiempo_prep_cli_totales = (h_prep_cli * 60) + m_prep_cli
 
-        op_p_cli_prep = st.selectbox("Nº de Pallets (Cargas Cliente)", opciones_pallets_estandar, key="opt_p_prep_cli")
-        num_p_cli_prep = st.number_input("Especifica pallets cliente", min_value=1, max_value=500, value=33, key="num_p_prep_cli_val") if op_p_cli_prep == "Otra cantidad" else int(op_p_cli_prep)
+        num_p_cli_prep = st.number_input("Nº de Pallets (Cargas Cliente)", min_value=0, max_value=500, value=33, key="num_p_prep_cli_val")
 
         reenfardar = st.selectbox("¿Se reenfardan/reetiquetan pallets?", ["No", "Sí"], key="sel_reenfardar")
         if reenfardar == "Sí":
@@ -962,22 +849,14 @@ elif modo_app == "Preparación Cargas":
 
     if activar_prep_mail:
         st.markdown("#### 2. Preparación Mailing")
-        carrs_mail_prep = st.multiselect(
-            "Carretillero(s) - Mailing", 
-            carretilleros_actuales, 
-            placeholder="Selecciona uno o varios",
-            key="multi_carr_prep_mail"
-        )
+        carrs_mail_prep = st.multiselect("Carretillero(s) - Mailing", carretilleros_actuales, placeholder="Selecciona uno o varios", key="multi_carr_prep_mail")
         
         col_tm_h, col_tm_m = st.columns(2)
-        with col_tm_h: 
-            h_prep_mail = st.selectbox("Horas en Operación (Mailing)", lista_horas_prod, index=0, key="h_prep_mail")
-        with col_tm_m: 
-            m_prep_mail = st.selectbox("Minutos en Operación (Mailing)", lista_minutos_15, index=0, key="m_prep_mail")
+        with col_tm_h: h_prep_mail = st.selectbox("Horas en Operación (Mailing)", lista_horas_prod, index=0, key="h_prep_mail")
+        with col_tm_m: m_prep_mail = st.selectbox("Minutos en Operación (Mailing)", lista_minutos_15, index=0, key="m_prep_mail")
         tiempo_prep_mail_totales = (h_prep_mail * 60) + m_prep_mail
 
-        op_p_mail_prep = st.selectbox("Nº de Pallets (Mailing)", opciones_pallets_estandar, key="opt_p_prep_mail")
-        num_p_mail_prep = st.number_input("Especifica pallets mailing", min_value=1, max_value=500, value=33, key="num_p_prep_mail_val") if op_p_mail_prep == "Otra cantidad" else int(op_p_mail_prep)
+        num_p_mail_prep = st.number_input("Nº de Pallets (Mailing)", min_value=0, max_value=500, value=33, key="num_p_prep_mail_val")
 
     st.divider()
 
@@ -989,30 +868,21 @@ elif modo_app == "Preparación Cargas":
 
     if activar_prep_persan:
         st.markdown("#### 3. Preparación Persán")
-        carrs_persan_prep = st.multiselect(
-            "Carretillero(s) - Persán", 
-            carretilleros_actuales, 
-            placeholder="Selecciona uno o varios",
-            key="multi_carr_prep_persan"
-        )
+        carrs_persan_prep = st.multiselect("Carretillero(s) - Persán", carretilleros_actuales, placeholder="Selecciona uno o varios", key="multi_carr_prep_persan")
         
         col_tp_h, col_tp_m = st.columns(2)
-        with col_tp_h: 
-            h_prep_persan = st.selectbox("Horas en Operación (Persán)", lista_horas_prod, index=0, key="h_prep_persan")
-        with col_tp_m: 
-            m_prep_persan = st.selectbox("Minutos en Operación (Persán)", lista_minutos_15, index=0, key="m_prep_persan")
+        with col_tp_h: h_prep_persan = st.selectbox("Horas en Operación (Persán)", lista_horas_prod, index=0, key="h_prep_persan")
+        with col_tp_m: m_prep_persan = st.selectbox("Minutos en Operación (Persán)", lista_minutos_15, index=0, key="m_prep_persan")
         tiempo_prep_persan_totales = (h_prep_persan * 60) + m_prep_persan
 
-        op_p_persan_prep = st.selectbox("Nº de Pallets (Persán)", opciones_pallets_estandar, key="opt_p_prep_persan")
-        num_p_persan_prep = st.number_input("Especifica pallets persán", min_value=1, max_value=500, value=33, key="num_p_prep_persan_val") if op_p_persan_prep == "Otra cantidad" else int(op_p_persan_prep)
+        num_p_persan_prep = st.number_input("Nº de Pallets (Persán)", min_value=0, max_value=500, value=33, key="num_p_prep_persan_val")
 
     st.divider()
 
     # Gestor rápido para añadir carretillero
     with st.expander("➕ ¿Necesitas añadir un carretillero nuevo a la lista?"):
         col_ex1, col_ex2 = st.columns([0.75, 0.25])
-        with col_ex1: 
-            nuevo_carr_gen = st.text_input("Nombre del carretillero", placeholder="Ej: F. Gómez", key="inp_carr_prep_gen").strip()
+        with col_ex1: nuevo_carr_gen = st.text_input("Nombre del carretillero", placeholder="Ej: F. Gómez", key="inp_carr_prep_gen").strip()
         with col_ex2:
             st.write("")
             btn_add_gen = st.button("Añadir", key="btn_add_prep_gen")
@@ -1031,19 +901,14 @@ elif modo_app == "Preparación Cargas":
             try:
                 fila_prep = [[
                     fecha_prep.strftime("%Y-%m-%d"),
-                    "", # Semana (calculada en Apps Script)
-                    "", # Día (calculado en Apps Script)
-                    turno_prep,
-                    # Bloque 1: Cargas Cliente
+                    "", "", turno_prep,
                     int(num_p_cli_prep) if activar_prep_cli else "",
                     ", ".join(carrs_cli_prep) if activar_prep_cli else "",
                     int(tiempo_prep_cli_totales) if activar_prep_cli else "",
                     int(num_p_reenf) if (activar_prep_cli and num_p_reenf > 0) else "",
-                    # Bloque 2: Mailing
                     int(num_p_mail_prep) if activar_prep_mail else "",
                     ", ".join(carrs_mail_prep) if activar_prep_mail else "",
                     int(tiempo_prep_mail_totales) if activar_prep_mail else "",
-                    # Bloque 3: Persán
                     int(num_p_persan_prep) if activar_prep_persan else "",
                     ", ".join(carrs_persan_prep) if activar_prep_persan else "",
                     int(tiempo_prep_persan_totales) if activar_prep_persan else ""
@@ -1055,13 +920,12 @@ elif modo_app == "Preparación Cargas":
                     st.balloons()
                     
                     claves_limpiar = [
-                        "chk_prep_cli", "multi_carr_prep_cli", "h_prep_cli", "m_prep_cli", "opt_p_prep_cli", "num_p_prep_cli_val", "sel_reenfardar", "num_p_reenf_val",
-                        "chk_prep_mail", "multi_carr_prep_mail", "h_prep_mail", "m_prep_mail", "opt_p_prep_mail", "num_p_prep_mail_val",
-                        "chk_prep_persan", "multi_carr_prep_persan", "h_prep_persan", "m_prep_persan", "opt_p_prep_persan", "num_p_prep_persan_val"
+                        "chk_prep_cli", "multi_carr_prep_cli", "h_prep_cli", "m_prep_cli", "num_p_prep_cli_val", "sel_reenfardar", "num_p_reenf_val",
+                        "chk_prep_mail", "multi_carr_prep_mail", "h_prep_mail", "m_prep_mail", "num_p_prep_mail_val",
+                        "chk_prep_persan", "multi_carr_prep_persan", "h_prep_persan", "m_prep_persan", "num_p_prep_persan_val"
                     ]
                     for c in claves_limpiar:
-                        if c in st.session_state:
-                            del st.session_state[c]
+                        if c in st.session_state: del st.session_state[c]
 
                     st.session_state.df_prep_cargas = cargar_registros_prep_cargas()
                     st.query_params["recarga"] = str(time.time())
