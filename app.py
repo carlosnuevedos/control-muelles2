@@ -25,6 +25,7 @@ icono_clientes_base64 = convertir_imagen_a_base64("Clientes.png")
 icono_pallet_base64 = convertir_imagen_a_base64("Pallet.png")
 icono_carretilla_base64 = convertir_imagen_a_base64("Carretilla.png")
 icono_cargas_base64 = convertir_imagen_a_base64("Cargas.png")
+icono_turnos_base64 = convertir_imagen_a_base64("Turnos.png")
 
 # Configuración de la página web
 st.set_page_config(
@@ -169,6 +170,10 @@ COLS_NECESARIAS_PREP_CARGAS = [
     "Nº Pts Persán", "Carre Persán", "Tiempo Prep. Persán"
 ]
 
+COLS_NECESARIAS_ARCHIVOS_TURNO = [
+    "Fecha Registro", "Mes", "Dia", "Semana", "Turno", "Archivo Reub.", "Archivo Comp."
+]
+
 # --- FUNCIONES DE LECTURA ROBUSTAS ---
 def procesar_filas_hoja(raw_rows, cols_esperadas):
     if not raw_rows or len(raw_rows) <= 4:
@@ -232,12 +237,23 @@ def cargar_registros_prep_cargas():
         pass
     return pd.DataFrame(columns=COLS_NECESARIAS_PREP_CARGAS)
 
+def cargar_registros_archivos_turno():
+    try:
+        url_fresca = f"{WEB_APP_URL}?nocache={time.time()}"
+        response = requests.post(url_fresca, json={"action": "leer_archivos_turno"})
+        if response.status_code == 200:
+            return procesar_filas_hoja(response.json().get("rows", []), COLS_NECESARIAS_ARCHIVOS_TURNO)
+    except Exception:
+        pass
+    return pd.DataFrame(columns=COLS_NECESARIAS_ARCHIVOS_TURNO)
+
 # Cargar estados en memoria
 if "df_registros" not in st.session_state: st.session_state.df_registros = cargar_registros_lanzaderas()
 if "df_clientes" not in st.session_state: st.session_state.df_clientes = cargar_registros_clientes()
 if "df_produccion" not in st.session_state: st.session_state.df_produccion = cargar_registros_produccion()
 if "df_reub" not in st.session_state: st.session_state.df_reub = cargar_registros_reub()
 if "df_prep_cargas" not in st.session_state: st.session_state.df_prep_cargas = cargar_registros_prep_cargas()
+if "df_archivos_turno" not in st.session_state: st.session_state.df_archivos_turno = cargar_registros_archivos_turno()
 
 zona_espana = timezone(timedelta(hours=1))
 fecha_hoy_local = datetime.now(zona_espana).date() if hasattr(datetime, 'now') else datetime.now().date()
@@ -268,7 +284,14 @@ def obtener_lista_carretilleros():
 st.sidebar.title("Navegación")
 modo_app = st.sidebar.radio(
     "Selecciona el apartado:", 
-    ["Control Lanzaderas", "Cargas de Cliente", "Producción", "Reubicaciones, Compactaciones y NCT's", "Preparación Cargas"]
+    [
+        "Control Lanzaderas", 
+        "Cargas de Cliente", 
+        "Producción", 
+        "Reubicaciones, Compactaciones y NCT's", 
+        "Preparación Cargas",
+        "Archivos del Turno"
+    ]
 )
 
 
@@ -438,7 +461,6 @@ if modo_app == "Control Lanzaderas":
                     st.success(f"✅ ¡Guardado en Google Sheets para **{matricula.upper()}**!")
                     st.balloons()
                     
-                    # Limpiar todas las claves de session_state de esta sección
                     claves_lanz = [
                         "f_lanz", "select_carretillero_existente_lanz", "input_nuevo_carr_lanz", "radio_modo_carr_lanz",
                         "select_mat_existente_lanz", "input_nueva_mat_lanz", "radio_modo_mat_lanz", "chk_descarga",
@@ -671,7 +693,6 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
 
     carretilleros_actuales = obtener_lista_carretilleros()
 
-    # --- DATOS GENERALES ---
     st.markdown("#### Datos Generales")
     col_gen1, col_gen2 = st.columns(2)
     with col_gen1: fecha_reub = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_reub")
@@ -679,7 +700,6 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
 
     st.divider()
 
-    # --- SUBAPARTADO 1: REUBICACIONES ---
     activar_reub = st.checkbox("🔄 Registrar Reubicaciones", key="chk_reub")
     carrs_reub = []
     num_pallets_reub = 0
@@ -694,7 +714,6 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
 
     st.divider()
 
-    # --- SUBAPARTADO 2: COMPACTACIONES ---
     activar_comp = st.checkbox("⚙️ Registrar Compactaciones", key="chk_comp")
     carrs_comp = []
     num_compactaciones = 0
@@ -716,7 +735,6 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
 
     st.divider()
 
-    # --- SUBAPARTADO 3: NCT'S ---
     activar_nct = st.checkbox("📋 Registrar NCT's", key="chk_nct")
     datos_ncts = []
 
@@ -757,7 +775,6 @@ elif modo_app == "Reubicaciones, Compactaciones y NCT's":
                     st.session_state.num_ncts -= 1
                     st.rerun()
 
-    # Gestor rápido para añadir carretillero
     with st.expander("➕ ¿Necesitas añadir un carretillero nuevo a la lista?"):
         col_ex1, col_ex2 = st.columns([0.75, 0.25])
         with col_ex1: nuevo_carr_general = st.text_input("Nombre del carretillero", placeholder="Ej: F. Gómez", key="input_nuevo_carr_gen").strip()
@@ -855,7 +872,6 @@ elif modo_app == "Preparación Cargas":
 
     carretilleros_actuales = obtener_lista_carretilleros()
 
-    # --- DATOS GENERALES ---
     st.markdown("#### Datos Generales")
     col_g1, col_g2 = st.columns(2)
     with col_g1: fecha_prep = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_prep_cargas")
@@ -863,7 +879,6 @@ elif modo_app == "Preparación Cargas":
 
     st.divider()
 
-    # --- SUBAPARTADO 1: PREPARACIÓN CARGAS CLIENTE ---
     activar_prep_cli = st.checkbox("📦 Registrar Preparación Cargas Cliente", key="chk_prep_cli")
     carrs_cli_prep = []
     tiempo_prep_cli_totales = 0
@@ -887,7 +902,6 @@ elif modo_app == "Preparación Cargas":
 
     st.divider()
 
-    # --- SUBAPARTADO 2: PREPARACIÓN MAILING ---
     activar_prep_mail = st.checkbox("✉️ Registrar Preparación Mailing", key="chk_prep_mail")
     carrs_mail_prep = []
     tiempo_prep_mail_totales = 0
@@ -906,7 +920,6 @@ elif modo_app == "Preparación Cargas":
 
     st.divider()
 
-    # --- SUBAPARTADO 3: PREPARACIÓN PERSÁN ---
     activar_prep_persan = st.checkbox("🏭 Registrar Preparación Persán", key="chk_prep_persan")
     carrs_persan_prep = []
     tiempo_prep_persan_totales = 0
@@ -925,7 +938,6 @@ elif modo_app == "Preparación Cargas":
 
     st.divider()
 
-    # Gestor rápido para añadir carretillero
     with st.expander("➕ ¿Necesitas añadir un carretillero nuevo a la lista?"):
         col_ex1, col_ex2 = st.columns([0.75, 0.25])
         with col_ex1: nuevo_carr_gen = st.text_input("Nombre del carretillero", placeholder="Ej: F. Gómez", key="inp_carr_prep_gen").strip()
@@ -991,3 +1003,125 @@ elif modo_app == "Preparación Cargas":
         st.dataframe(st.session_state.df_prep_cargas.tail(5), use_container_width=True)
     else:
         st.info("Aún no hay registros en este apartado.")
+
+
+# ==============================================================================
+# SECCIÓN 6: ARCHIVOS DEL TURNO
+# ==============================================================================
+elif modo_app == "Archivos del Turno":
+    if icono_turnos_base64:
+        st.markdown(f"<h3 style='display: flex; align-items: center;'><img src='data:image/png;base64,{icono_turnos_base64}' class='seccion-icono'> Archivos del Turno</h3>", unsafe_allow_html=True)
+    else:
+        st.subheader("📂 Archivos del Turno")
+
+    st.markdown("#### Datos Generales")
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        fecha_arch = st.date_input("Fecha del Registro", value=fecha_hoy_local, key="f_archivos_turno")
+    with col_t2:
+        turno_arch = st.selectbox("Turno", ["Mañana", "Tarde", "Noche"], key="turno_archivos_turno")
+
+    st.divider()
+
+    # --- SUBAPARTADO 1: SUBIR EXCEL REUBICACIONES ---
+    activar_subir_reub = st.checkbox("📊 Subir Excel Reubicaciones", key="chk_subir_reub")
+    archivo_reub_subido = None
+    if activar_subir_reub:
+        st.markdown("#### 1. Excel de Reubicaciones")
+        archivo_reub_subido = st.file_uploader(
+            "Adjunta el archivo Excel de Reubicaciones (.xlsx, .xls)",
+            type=["xlsx", "xls"],
+            key="uploader_excel_reub"
+        )
+
+    st.divider()
+
+    # --- SUBAPARTADO 2: SUBIR ARCHIVO COMPACTACIÓN/NCT'S ---
+    activar_subir_comp = st.checkbox("📸 Subir Archivo Compactación/NCT's", key="chk_subir_comp")
+    archivo_comp_subido = None
+    if activar_subir_comp:
+        st.markdown("#### 2. Foto Compactación / NCT's")
+        archivo_comp_subido = st.file_uploader(
+            "Adjunta la imagen de Compactación / NCT's (.jpg, .jpeg, .png, .webp)",
+            type=["jpg", "jpeg", "png", "webp"],
+            key="uploader_foto_comp"
+        )
+
+    st.divider()
+    submitted_archivos = st.button("Guardar Archivos del Turno")
+
+    if submitted_archivos:
+        if not activar_subir_reub and not activar_subir_comp:
+            st.warning("⚠️ Marca al menos uno de los dos subapartados antes de guardar.")
+        elif activar_subir_reub and archivo_reub_subido is None:
+            st.error("Has marcado 'Subir Excel Reubicaciones', pero no has adjuntado ningún archivo.")
+        elif activar_subir_comp and archivo_comp_subido is None:
+            st.error("Has marcado 'Subir Archivo Compactación/NCT's', pero no has adjuntado ninguna foto.")
+        else:
+            try:
+                with st.spinner("Subiendo archivos a Google Drive y registrando enlaces..."):
+                    payload_archivos = {
+                        "action": "update_archivos_turno",
+                        "fecha": fecha_arch.strftime("%Y-%m-%d"),
+                        "turno": turno_arch,
+                        "archivo_reub": None,
+                        "archivo_comp": None
+                    }
+
+                    if activar_subir_reub and archivo_reub_subido is not None:
+                        bytes_reub = archivo_reub_subido.getvalue()
+                        payload_archivos["archivo_reub"] = {
+                            "name": archivo_reub_subido.name,
+                            "mime": archivo_reub_subido.type or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            "data": base64.b64encode(bytes_reub).decode("utf-8")
+                        }
+
+                    if activar_subir_comp and archivo_comp_subido is not None:
+                        bytes_comp = archivo_comp_subido.getvalue()
+                        payload_archivos["archivo_comp"] = {
+                            "name": archivo_comp_subido.name,
+                            "mime": archivo_comp_subido.type or "image/jpeg",
+                            "data": base64.b64encode(bytes_comp).decode("utf-8")
+                        }
+
+                    response = requests.post(WEB_APP_URL, json=payload_archivos)
+                    if response.status_code == 200:
+                        res_json = response.json()
+                        if res_json.get("status") == "success":
+                            st.success("✅ ¡Archivos subidos a Google Drive y enlaces registrados en 'Archivos Turno'!")
+                            st.balloons()
+
+                            claves_arch = [
+                                "f_archivos_turno", "turno_archivos_turno",
+                                "chk_subir_reub", "uploader_excel_reub",
+                                "chk_subir_comp", "uploader_foto_comp"
+                            ]
+                            for c in claves_arch:
+                                if c in st.session_state:
+                                    del st.session_state[c]
+
+                            st.session_state.df_archivos_turno = cargar_registros_archivos_turno()
+                            st.session_state.scroll_top = True
+                            st.query_params["recarga"] = str(time.time())
+                            time.sleep(0.5)
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Error en Apps Script: {res_json.get('message')}")
+                    else:
+                        st.error(f"❌ Error de conexión con Google Sheets: {response.text}")
+            except Exception as e:
+                st.error(f"❌ Error al procesar los archivos: {e}")
+
+    st.divider()
+    st.subheader("📊 Últimos 5 Registros (Archivos Turno)")
+    if not st.session_state.df_archivos_turno.empty:
+        st.dataframe(
+            st.session_state.df_archivos_turno.tail(5),
+            use_container_width=True,
+            column_config={
+                "Archivo Reub.": st.column_config.LinkColumn("Archivo Reub.", display_text="Abrir Excel"),
+                "Archivo Comp.": st.column_config.LinkColumn("Archivo Comp.", display_text="Abrir Foto")
+            }
+        )
+    else:
+        st.info("Aún no hay archivos registrados en este apartado.")
